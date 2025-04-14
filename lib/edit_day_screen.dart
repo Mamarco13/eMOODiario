@@ -29,8 +29,19 @@ class _EditDayScreenState extends State<EditDayScreen> {
   String phrase = '';
   List<File> mediaFiles = [];
 
+  final titleController = TextEditingController();
+  final phraseController = TextEditingController();
   final picker = ImagePicker();
   final maxMediaCount = 3;
+
+  final List<Color> availableColors = [
+    Colors.yellow,
+    Colors.red,
+    Colors.blue,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+  ];
 
   @override
   void initState() {
@@ -38,6 +49,27 @@ class _EditDayScreenState extends State<EditDayScreen> {
     selectedColor1 = widget.initialColor1;
     selectedColor2 = widget.initialColor2;
     percentage = widget.initialPercentage;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      title = args['title'] ?? '';
+      phrase = args['phrase'] ?? '';
+      titleController.text = title;
+      phraseController.text = phrase;
+      final mediaPaths = List<String>.from(args['media'] ?? []);
+      mediaFiles = mediaPaths.map((path) => File(path)).toList();
+    }
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    phraseController.dispose();
+    super.dispose();
   }
 
   Future<void> pickMedia() async {
@@ -55,6 +87,24 @@ class _EditDayScreenState extends State<EditDayScreen> {
     });
   }
 
+  void toggleColorSelection(Color color) {
+    setState(() {
+      if (selectedColor1 == color) {
+        if (selectedColor2 != null) {
+          selectedColor1 = selectedColor2!;
+          selectedColor2 = null;
+        }
+      } else if (selectedColor2 == color) {
+        selectedColor2 = null;
+      } else if (selectedColor2 == null && selectedColor1 != color) {
+        selectedColor2 = color;
+      } else {
+        selectedColor1 = color;
+        selectedColor2 = null;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,33 +118,64 @@ class _EditDayScreenState extends State<EditDayScreen> {
           children: [
             Text('Título'),
             TextField(
-              onChanged: (val) => setState(() => title = val),
+              controller: titleController,
+              onChanged: (val) => title = val,
               decoration: InputDecoration(hintText: 'Escribe un título...'),
             ),
             SizedBox(height: 16),
             Text('Frase del día'),
             TextField(
-              onChanged: (val) => setState(() => phrase = val),
+              controller: phraseController,
+              onChanged: (val) => phrase = val,
               decoration: InputDecoration(hintText: '¿Cómo te sentiste?'),
             ),
             SizedBox(height: 16),
-            Text('Selecciona emociones'),
-            Row(
-              children: [
-                colorCircle(selectedColor1, (color) => setState(() => selectedColor1 = color)),
-                SizedBox(width: 8),
-                if (selectedColor2 != null)
-                  colorCircle(selectedColor2!, (color) => setState(() => selectedColor2 = color)),
-              ],
+            Text('Selecciona emociones (máx. 2)'),
+            Wrap(
+              spacing: 8,
+              children: availableColors.map((color) {
+                final isSelected = color == selectedColor1 || color == selectedColor2;
+                return GestureDetector(
+                  onTap: () => toggleColorSelection(color),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(width: 2, color: isSelected ? Colors.black : Colors.transparent),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
             SizedBox(height: 16),
-            Text('Proporción entre emociones'),
-            Slider(
-              value: percentage,
-              min: 0,
-              max: 1,
-              onChanged: (val) => setState(() => percentage = val),
-            ),
+            if (selectedColor2 != null) ...[
+              Text('Proporción entre emociones'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Emoción 1', style: TextStyle(color: selectedColor1)),
+                  Text('Emoción 2', style: TextStyle(color: selectedColor2)),
+                ],
+              ),
+              Slider(
+                value: percentage,
+                min: 0,
+                max: 1,
+                onChanged: (val) => setState(() => percentage = val),
+              ),
+              Center(
+                child: CustomPaint(
+                  size: Size(80, 80),
+                  painter: _HorizontalSplitCirclePainter(
+                    color1: selectedColor1,
+                    color2: selectedColor2!,
+                    percentage: percentage,
+                  ),
+                ),
+              ),
+            ],
             SizedBox(height: 16),
             Text('Multimedia (${mediaFiles.length}/$maxMediaCount)'),
             Wrap(
@@ -148,19 +229,37 @@ class _EditDayScreenState extends State<EditDayScreen> {
       ),
     );
   }
+}
 
-  Widget colorCircle(Color color, Function(Color) onTap) {
-    return GestureDetector(
-      onTap: () => onTap(color),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(width: 2, color: Colors.black),
-        ),
-      ),
-    );
+class _HorizontalSplitCirclePainter extends CustomPainter {
+  final Color color1;
+  final Color color2;
+  final double percentage;
+
+  _HorizontalSplitCirclePainter({
+    required this.color1,
+    required this.color2,
+    required this.percentage,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint1 = Paint()..color = color1;
+    final paint2 = Paint()..color = color2;
+
+    final height1 = size.height * percentage;
+    final height2 = size.height * (1 - percentage);
+
+    final rect1 = Rect.fromLTWH(0, size.height - height1, size.width, height1);
+    final rect2 = Rect.fromLTWH(0, 0, size.width, height2);
+
+    final rrect1 = RRect.fromRectAndRadius(rect1, Radius.circular(size.width / 2));
+    final rrect2 = RRect.fromRectAndRadius(rect2, Radius.circular(size.width / 2));
+
+    canvas.drawRRect(rrect2, paint2);
+    canvas.drawRRect(rrect1, paint1);
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

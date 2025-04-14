@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'emotion_glass_day.dart';
+import 'edit_day_screen.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:hive/hive.dart';
-import 'emotion_glass_day.dart';
-import 'edit_day_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   @override
@@ -18,30 +18,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   final List<String> weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-  @override
-  void initState() {
-    super.initState();
-    final box = Hive.box('emotionsBox');
-    setState(() {
-      dayData = Map.fromEntries(
-        box.toMap().entries.map((e) {
-          final data = Map<String, dynamic>.from(e.value);
-          return MapEntry(
-            DateTime.parse(e.key),
-            {
-              'title': data['title'],
-              'phrase': data['phrase'],
-              'color1': Color(data['color1']),
-              'color2': data['color2'] != null ? Color(data['color2']) : null,
-              'percentage': data['percentage'],
-              'media': (data['media'] as List).map((p) => File(p)).toList(),
-            },
-          );
-        }),
-      );
-    });
-  }
-
   Color getColor1ForDay(int day) {
     final date = DateTime(_focusedDate.year, _focusedDate.month, day);
     return dayData[date]?['color1'] ?? Colors.grey.shade300;
@@ -52,9 +28,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return dayData[date]?['color2'];
   }
 
-  double getPercentageForDay(int day) {
+  double getPercentageForDay(int day, {bool isSelected = false}) {
     final date = DateTime(_focusedDate.year, _focusedDate.month, day);
-    return dayData[date]?['percentage'] ?? 0.1;
+    final raw = dayData[date]?['percentage'] ?? 0.95;
+    if (isSelected) {
+      return 0.75;
+    }
+    return raw;
   }
 
   Widget _buildEmotionPreview(int day) {
@@ -85,6 +65,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
               initialColor1: data?['color1'] ?? Colors.yellow,
               initialColor2: data?['color2'],
               initialPercentage: data?['percentage'] ?? 1.0,
+            ),
+            settings: RouteSettings(
+              arguments: {
+                'title': data?['title'],
+                'phrase': data?['phrase'],
+                'media': data?['media']?.map((f) => f.path).toList() ?? [],
+              },
             ),
           ),
         );
@@ -182,6 +169,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     for (int day = 1; day <= totalDaysInMonth; day++) {
+      final isSelected = _selectedDay == day;
       final widget = GestureDetector(
         onTap: () {
           setState(() {
@@ -189,12 +177,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           });
         },
         child: EmotionGlassDay(
-          key: ValueKey('${day}_${_selectedDay == day}'),
+          key: ValueKey('${day}_$isSelected'),
           day: day,
           color1: getColor1ForDay(day),
           color2: getColor2ForDay(day),
-          percentage: getPercentageForDay(day),
-          animate: _selectedDay == day,
+          percentage: isSelected && getColor2ForDay(day) != null ? 0.375 : getPercentageForDay(day, isSelected: isSelected),
+          animate: isSelected,
         ),
       );
 

@@ -18,6 +18,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   final List<String> weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
+  @override
+  void initState() {
+    super.initState();
+    final box = Hive.box('emotionsBox');
+    final Map<DateTime, Map<String, dynamic>> loadedData = {};
+
+    for (final key in box.keys) {
+      final raw = box.get(key);
+      final date = DateTime.parse(key);
+      loadedData[date] = {
+        'title': raw['title'],
+        'phrase': raw['phrase'],
+        'color1': Color(raw['color1']),
+        'color2': raw['color2'] != null ? Color(raw['color2']) : null,
+        'percentage': raw['percentage'],
+        'media': (raw['media'] as List).map((p) => File(p)).toList(),
+      };
+    }
+
+    setState(() {
+      dayData = loadedData;
+    });
+  }
+
   Color getColor1ForDay(int day) {
     final date = DateTime(_focusedDate.year, _focusedDate.month, day);
     return dayData[date]?['color1'] ?? Colors.grey.shade300;

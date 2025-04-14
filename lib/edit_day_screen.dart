@@ -72,8 +72,10 @@ class _EditDayScreenState extends State<EditDayScreen> {
     super.dispose();
   }
 
-  Future<void> pickMedia() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> pickMedia({bool fromCamera = false}) async {
+    final pickedFile = await picker.pickImage(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+    );
     if (pickedFile != null && mediaFiles.length < maxMediaCount) {
       setState(() {
         mediaFiles.add(File(pickedFile.path));
@@ -197,14 +199,28 @@ class _EditDayScreenState extends State<EditDayScreen> {
                     ],
                   ),
                 if (mediaFiles.length < maxMediaCount)
-                  GestureDetector(
-                    onTap: pickMedia,
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      color: Colors.grey[300],
-                      child: Icon(Icons.add),
-                    ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => pickMedia(fromCamera: false),
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300],
+                          child: Icon(Icons.photo),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: () => pickMedia(fromCamera: true),
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300],
+                          child: Icon(Icons.camera_alt),
+                        ),
+                      ),
+                    ],
                   )
               ],
             ),

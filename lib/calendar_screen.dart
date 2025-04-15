@@ -4,16 +4,36 @@ import 'edit_day_screen.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:hive/hive.dart';
+import 'package:video_player/video_player.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
 
 class CalendarScreen extends StatefulWidget {
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProviderStateMixin {
   DateTime _focusedDate = DateTime.now();
   int? _selectedDay;
   int _currentMediaIndex = 0;
+  bool _isHolding = false;
+  VideoPlayerController? _videoController;
+
+  Future<File?> getVideoThumbnail(File videoFile) async {
+    final tempDir = await getTemporaryDirectory();
+    final thumb = await VideoThumbnail.thumbnailFile(
+      video: videoFile.path,
+      thumbnailPath: tempDir.path,
+      imageFormat: ImageFormat.PNG,
+      maxWidth: 480,
+      quality: 95,
+    );
+    if (thumb != null) {
+      return File(thumb);
+    }
+    return null;
+  }
 
   Map<DateTime, Map<String, dynamic>> dayData = {};
 
@@ -34,13 +54,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
         'color1': Color(raw['color1']),
         'color2': raw['color2'] != null ? Color(raw['color2']) : null,
         'percentage': raw['percentage'],
-        'media': (raw['media'] as List).map((p) => File(p)).toList(),
+        'media': (raw['media'] as List)
+            .map((p) => p is Map ? MediaFile.fromJson(Map<String, dynamic>.from(p)) : MediaFile(file: File(p), isVideo: false))
+            .toList(),
       };
     }
 
     setState(() {
       dayData = loadedData;
     });
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
   }
 
   Color getColor1ForDay(int day) {
@@ -57,7 +85,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final date = DateTime(_focusedDate.year, _focusedDate.month, day);
     final raw = dayData[date]?['percentage'] ?? 0.95;
     if (isSelected) {
-      return 0.75;
+      return 0.60;
     }
     return raw;
   }
@@ -83,7 +111,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             colors: [color1.withOpacity(0.5), color1.withOpacity(0.3)],
           );
 
-    final currentFile = mediaList.isNotEmpty
+    final currentMedia = mediaList.isNotEmpty
         ? mediaList[_currentMediaIndex % mediaList.length]
         : null;
 
@@ -103,7 +131,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               arguments: {
                 'title': data?['title'],
                 'phrase': data?['phrase'],
-                'media': data?['media']?.map((f) => f.path).toList() ?? [],
+                'media': data?['media']?.map((m) => m.toJson()).toList() ?? [],
               },
             ),
           ),
@@ -116,7 +144,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             'color1': Color(result['color1']),
             'color2': result['color2'] != null ? Color(result['color2']) : null,
             'percentage': result['percentage'],
-            'media': (result['media'] as List).map((p) => File(p)).toList(),
+            'media': (result['media'] as List).map((p) => MediaFile.fromJson(p)).toList(),
           };
 
           final storageData = {
@@ -147,6 +175,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
           });
         }
       },
+      onLongPressStart: (_) async {
+        if (currentMedia != null && currentMedia.isVideo) {
+          _videoController?.dispose();
+          _videoController = VideoPlayerController.file(currentMedia.file);
+          await _videoController!.initialize();
+          _videoController!.setLooping(true);
+          await _videoController!.play();
+          setState(() => _isHolding = true);
+        }
+      },
+      onLongPressEnd: (_) {
+        _videoController?.pause();
+        setState(() => _isHolding = false);
+      },
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Container(
@@ -158,21 +200,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (currentFile != null)
-                AnimatedSwitcher(
-                  duration: Duration(milliseconds: 400),
-                  switchInCurve: Curves.easeIn,
-                  switchOutCurve: Curves.easeOut,
-                  child: ClipRRect(
-                    key: ValueKey(currentFile.path),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.file(
-                      currentFile,
-                      fit: BoxFit.cover,
-                      alignment: Alignment(0, -0.5),
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
+              if (_isHolding && _videoController != null && _videoController!.value.isInitialized)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: VideoPlayer(_videoController!),
+                )
+              else if (currentMedia != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: FutureBuilder<File?>(
+                    future: currentMedia.isVideo ? getVideoThumbnail(currentMedia.file) : Future.value(currentMedia.file),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      return Stack(
+                        children: [
+                          Image.file(
+                            snapshot.data!,
+                            fit: BoxFit.cover,
+                            alignment: Alignment(0, -0.5),
+                            width: double.infinity,
+                            height: double.infinity,
+                          ),
+                          if (currentMedia.isVideo && !_isHolding)
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Icon(Icons.play_circle_fill, color: Colors.white.withOpacity(0.8), size: 28),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               Container(
@@ -181,37 +240,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   gradient: gradient,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      DateFormat("EEEE, d 'de' MMMM", 'es_ES').format(date),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+              if (!_isHolding)
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DateFormat("EEEE, d 'de' MMMM", 'es_ES').format(date),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      data?['title'] ?? 'Sin título',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      SizedBox(height: 4),
+                      Text(
+                        data?['title'] ?? 'Sin título',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      data?['phrase'] ?? 'Sin descripción',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
+                      SizedBox(height: 4),
+                      Text(
+                        data?['phrase'] ?? 'Sin descripción',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -349,6 +409,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class MediaFile {
+  final File file;
+  final bool isVideo;
+
+  MediaFile({required this.file, required this.isVideo});
+
+  Map<String, dynamic> toJson() => {
+        'path': file.path,
+        'isVideo': isVideo,
+      };
+
+  static MediaFile fromJson(Map<String, dynamic> json) {
+    return MediaFile(
+      file: File(json['path']),
+      isVideo: json['isVideo'] ?? false,
     );
   }
 }

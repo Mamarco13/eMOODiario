@@ -2,6 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
+class MediaFile {
+  final File file;
+  final bool isVideo;
+
+  MediaFile({required this.file, required this.isVideo});
+
+  Map<String, dynamic> toJson() => {
+        'path': file.path,
+        'isVideo': isVideo,
+      };
+
+  static MediaFile fromJson(Map<String, dynamic> json) {
+    return MediaFile(
+      file: File(json['path']),
+      isVideo: json['isVideo'] ?? false,
+    );
+  }
+}
+
 class EditDayScreen extends StatefulWidget {
   final int day;
   final DateTime date;
@@ -27,8 +46,7 @@ class _EditDayScreenState extends State<EditDayScreen> {
   double percentage = 1.0;
   String title = '';
   String phrase = '';
-  List<File> mediaFiles = [];
-
+  List<MediaFile> mediaFiles = [];
   final titleController = TextEditingController();
   final phraseController = TextEditingController();
   final picker = ImagePicker();
@@ -60,8 +78,8 @@ class _EditDayScreenState extends State<EditDayScreen> {
       phrase = args['phrase'] ?? '';
       titleController.text = title;
       phraseController.text = phrase;
-      final mediaPaths = List<String>.from(args['media'] ?? []);
-      mediaFiles = mediaPaths.map((path) => File(path)).toList();
+      final mediaData = List<Map<String, dynamic>>.from(args['media'] ?? []);
+      mediaFiles = mediaData.map((e) => MediaFile.fromJson(e)).toList();
     }
   }
 
@@ -72,13 +90,14 @@ class _EditDayScreenState extends State<EditDayScreen> {
     super.dispose();
   }
 
-  Future<void> pickMedia({bool fromCamera = false}) async {
-    final pickedFile = await picker.pickImage(
-      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-    );
+  Future<void> pickMedia({bool fromCamera = false, bool isVideo = false}) async {
+    final pickedFile = isVideo
+        ? await picker.pickVideo(source: fromCamera ? ImageSource.camera : ImageSource.gallery)
+        : await picker.pickImage(source: fromCamera ? ImageSource.camera : ImageSource.gallery);
+
     if (pickedFile != null && mediaFiles.length < maxMediaCount) {
       setState(() {
-        mediaFiles.add(File(pickedFile.path));
+        mediaFiles.add(MediaFile(file: File(pickedFile.path), isVideo: isVideo));
       });
     }
   }
@@ -111,7 +130,7 @@ class _EditDayScreenState extends State<EditDayScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Editar Día ${widget.day}'),
+        title: Text('Editar Día \${widget.day}'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -179,7 +198,7 @@ class _EditDayScreenState extends State<EditDayScreen> {
               ),
             ],
             SizedBox(height: 16),
-            Text('Multimedia (${mediaFiles.length}/$maxMediaCount)'),
+            Text('Multimedia (\${mediaFiles.length}/\$maxMediaCount)'),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -187,7 +206,13 @@ class _EditDayScreenState extends State<EditDayScreen> {
                 for (int i = 0; i < mediaFiles.length; i++)
                   Stack(
                     children: [
-                      Image.file(mediaFiles[i], width: 100, height: 100, fit: BoxFit.cover),
+                      Image.file(mediaFiles[i].file, width: 100, height: 100, fit: BoxFit.cover),
+                      if (mediaFiles[i].isVideo)
+                        Positioned(
+                          bottom: 4,
+                          right: 4,
+                          child: Icon(Icons.play_circle_fill, color: Colors.white, size: 24),
+                        ),
                       Positioned(
                         top: 0,
                         right: 0,
@@ -220,6 +245,16 @@ class _EditDayScreenState extends State<EditDayScreen> {
                           child: Icon(Icons.camera_alt),
                         ),
                       ),
+                      SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: () => pickMedia(fromCamera: false, isVideo: true),
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300],
+                          child: Icon(Icons.videocam),
+                        ),
+                      ),
                     ],
                   )
               ],
@@ -234,7 +269,7 @@ class _EditDayScreenState extends State<EditDayScreen> {
                     'color1': selectedColor1.value,
                     'color2': selectedColor2?.value,
                     'percentage': percentage,
-                    'media': mediaFiles.map((f) => f.path).toList(),
+                    'media': mediaFiles.map((m) => m.toJson()).toList()
                   });
                 },
                 child: Text('Guardar'),

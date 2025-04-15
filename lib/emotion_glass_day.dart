@@ -1,4 +1,3 @@
-// emotion_glass_day.dart
 import 'package:flutter/material.dart';
 import 'dart:math';
 
@@ -8,6 +7,7 @@ class EmotionGlassDay extends StatefulWidget {
   final Color? color2;
   final double percentage;
   final bool animate;
+  final double scaleHeight; // 👈 nuevo parámetro
 
   const EmotionGlassDay({
     Key? key,
@@ -16,8 +16,8 @@ class EmotionGlassDay extends StatefulWidget {
     this.color2,
     this.percentage = 1.0,
     this.animate = true,
+    this.scaleHeight = 1.0, // 👈 valor por defecto
   }) : super(key: key);
-
 
   @override
   State<EmotionGlassDay> createState() => _EmotionGlassDayState();
@@ -64,6 +64,7 @@ class _EmotionGlassDayState extends State<EmotionGlassDay>
                           color2: widget.color2,
                           percentage: widget.percentage,
                           animationValue: _controller!.value,
+                          scaleHeight: widget.scaleHeight, // 👈 aquí
                         ),
                       );
                     },
@@ -75,6 +76,7 @@ class _EmotionGlassDayState extends State<EmotionGlassDay>
                       color2: widget.color2,
                       percentage: widget.percentage,
                       animationValue: 0.0,
+                      scaleHeight: widget.scaleHeight, // 👈 aquí
                     ),
                   ),
           ),
@@ -104,17 +106,19 @@ class _WavePainter extends CustomPainter {
   final Color? color2;
   final double percentage;
   final double animationValue;
+  final double scaleHeight; // 👈 nuevo
 
   _WavePainter({
     required this.color1,
     this.color2,
     required this.percentage,
     required this.animationValue,
+    required this.scaleHeight, // 👈 obligatorio
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double fillHeight = size.height * 0.95;
+    final double fillHeight = size.height * 0.95 * scaleHeight; // 👈 ajuste aquí
     final double height1 = fillHeight * percentage;
 
     final waveHeight = 3.0;

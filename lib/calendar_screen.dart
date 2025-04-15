@@ -188,7 +188,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
     final firstDayOfMonth = DateTime(_focusedDate.year, _focusedDate.month, 1);
@@ -203,25 +202,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     for (int day = 1; day <= totalDaysInMonth; day++) {
       final isSelected = _selectedDay == day;
+
+      final hasTwoEmotions = getColor2ForDay(day) != null;
+      final double scaleFactor = isSelected ? (hasTwoEmotions ? 0.6 : 0.75) : 1.0;
+
       final widget = GestureDetector(
         onTap: () {
           setState(() {
             _selectedDay = day;
           });
         },
-        child: EmotionGlassDay(
-          key: ValueKey('${day}_$isSelected'),
-          day: day,
-          color1: getColor1ForDay(day),
-          color2: getColor2ForDay(day),
-          percentage: isSelected && getColor2ForDay(day) != null ? 0.375 : getPercentageForDay(day, isSelected: isSelected),
-          animate: isSelected,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(
+            begin: 1.0,
+            end: scaleFactor,
+          ),
+          duration: Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+          builder: (context, animatedScale, child) {
+            return EmotionGlassDay(
+              key: ValueKey('${day}_$isSelected'),
+              day: day,
+              color1: getColor1ForDay(day),
+              color2: getColor2ForDay(day),
+              percentage: getPercentageForDay(day),
+              scaleHeight: animatedScale,
+              animate: isSelected,
+            );
+          },
         ),
       );
-
       dayWidgets.add(widget);
     }
-
     return Scaffold(
       backgroundColor: Color(0xFFF3F6FD),
       appBar: AppBar(

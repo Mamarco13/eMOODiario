@@ -13,6 +13,7 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDate = DateTime.now();
   int? _selectedDay;
+  int _currentMediaIndex = 0;
 
   Map<DateTime, Map<String, dynamic>> dayData = {};
 
@@ -64,6 +65,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildEmotionPreview(int day) {
     final date = DateTime(_focusedDate.year, _focusedDate.month, day);
     final data = dayData[date];
+    final mediaList = data?['media'] ?? [];
+
+    if (_selectedDay != day) _currentMediaIndex = 0;
+
     final color1 = data?['color1'] ?? Colors.grey.shade300;
     final color2 = data?['color2'];
     final gradient = color2 != null
@@ -77,6 +82,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             end: Alignment.topCenter,
             colors: [color1.withOpacity(0.5), color1.withOpacity(0.3)],
           );
+
+    final currentFile = mediaList.isNotEmpty
+        ? mediaList[_currentMediaIndex % mediaList.length]
+        : null;
 
     return GestureDetector(
       onTap: () async {
@@ -126,6 +135,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
           });
         }
       },
+      onHorizontalDragEnd: (details) {
+        if (mediaList.length > 1) {
+          final velocity = details.primaryVelocity ?? 0.0;
+          setState(() {
+            if (velocity < 0) {
+              _currentMediaIndex = ((_currentMediaIndex + 1) % mediaList.length).toInt();
+            } else if (velocity > 0) {
+              _currentMediaIndex = ((_currentMediaIndex - 1 + mediaList.length) % mediaList.length).toInt();
+            }
+          });
+        }
+      },
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Container(
@@ -137,12 +158,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (data?['media'] != null && data!['media'].isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.file(
-                    data['media'][0],
-                    fit: BoxFit.cover,
+              if (currentFile != null)
+                AnimatedSwitcher(
+                  duration: Duration(milliseconds: 400),
+                  switchInCurve: Curves.easeIn,
+                  switchOutCurve: Curves.easeOut,
+                  child: ClipRRect(
+                    key: ValueKey(currentFile.path),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(
+                      currentFile,
+                      fit: BoxFit.cover,
+                      alignment: Alignment(0, -0.5),
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
                   ),
                 ),
               Container(
@@ -188,6 +218,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     final firstDayOfMonth = DateTime(_focusedDate.year, _focusedDate.month, 1);
@@ -202,7 +233,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     for (int day = 1; day <= totalDaysInMonth; day++) {
       final isSelected = _selectedDay == day;
-
       final hasTwoEmotions = getColor2ForDay(day) != null;
       final double scaleFactor = isSelected ? (hasTwoEmotions ? 0.6 : 0.75) : 1.0;
 
@@ -232,8 +262,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           },
         ),
       );
+
       dayWidgets.add(widget);
     }
+
     return Scaffold(
       backgroundColor: Color(0xFFF3F6FD),
       appBar: AppBar(

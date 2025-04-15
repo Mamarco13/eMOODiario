@@ -158,6 +158,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
+                      DateFormat("EEEE, d 'de' MMMM", 'es_ES').format(date),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
                       data?['title'] ?? 'Sin título',
                       style: TextStyle(
                         color: Colors.white,

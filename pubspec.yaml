@@ -37,6 +37,8 @@ dependencies:
   path_provider: ^2.0.11 # necesario para rutas
   video_player: ^2.7.0
   video_thumbnail: ^0.5.3
+  permission_handler: ^12.0.0+1
+
 
 
 

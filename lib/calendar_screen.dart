@@ -1,5 +1,3 @@
-// Te paso todo el código actualizado aquí
-
 import 'package:flutter/material.dart';
 import 'emotion_glass_day.dart';
 import 'edit_day_screen.dart';
@@ -9,6 +7,8 @@ import 'package:hive/hive.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart';
 
 class CalendarScreen extends StatefulWidget {
   @override
@@ -427,6 +427,7 @@ class FullScreenImagePage extends StatefulWidget {
 class _FullScreenImagePageState extends State<FullScreenImagePage> {
   late PageController _controller;
   late int _currentIndex;
+  bool _showUI = true;
 
   @override
   void initState() {
@@ -441,95 +442,182 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
     super.dispose();
   }
 
+  Future<void> _downloadCurrentImage() async {
+    final currentMedia = widget.mediaList[_currentIndex];
+    final bytes = await currentMedia.file.readAsBytes();
+
+    PermissionStatus status = await Permission.photos.request(); // 👈 NUEVO
+
+    if (status.isGranted) {
+      final directory = Directory('/storage/emulated/0/Pictures/MisRecuerdos');
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      final String fileName = 'recuerdo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final File newImage = File('${directory.path}/$fileName');
+      await newImage.writeAsBytes(bytes);
+
+      const MethodChannel('com.misrecuerdos.gallery')
+          .invokeMethod('scanFile', {'path': newImage.path});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Imagen guardada en Galería')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Permiso de fotos denegado')),
+      );
+    }
+  }
+
+  void _showOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.download),
+                title: Text('Descargar imagen'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _downloadCurrentImage();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.visibility_off),
+                title: Text('Ocultar interfaz'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _showUI = false;
+                  });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaList = widget.mediaList;
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          PageView.builder(
-            controller: _controller,
-            itemCount: mediaList.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              final media = mediaList[index];
-              return Center(
-                child: Hero(
-                  tag: media.file.path,
-                  child: Image.file(
-                    media.file,
-                    fit: BoxFit.contain,
+      body: GestureDetector(
+        onTap: () {
+          setState(() {
+            _showUI = !_showUI;
+          });
+        },
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _controller,
+              itemCount: mediaList.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                final media = mediaList[index];
+                return Center(
+                  child: Hero(
+                    tag: media.file.path,
+                    child: Image.file(
+                      media.file,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (_showUI)
+              Positioned(
+                top: 40,
+                left: 20,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(Icons.arrow_back, color: Colors.white, size: 24),
                   ),
                 ),
-              );
-            },
-          ),
-          Positioned(
-            top: 40,
-            left: 20,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
-                ),
-                padding: const EdgeInsets.all(8),
-                child: Icon(Icons.arrow_back, color: Colors.white, size: 24),
               ),
-            ),
-          ),
-          Positioned(
-            bottom: 30,
-            left: 20,
-            right: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (widget.title != null && widget.title!.isNotEmpty)
-                  Text(
-                    widget.title!,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(
-                          blurRadius: 4,
-                          color: Colors.black87,
-                          offset: Offset(1, 1),
-                        )
-                      ],
+            if (_showUI)
+              Positioned(
+                top: 40,
+                right: 20,
+                child: GestureDetector(
+                  onTap: _showOptionsMenu,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
                     ),
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(Icons.more_vert, color: Colors.white, size: 24),
                   ),
-                if (widget.phrase != null && widget.phrase!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      widget.phrase!,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        shadows: [
-                          Shadow(
-                            blurRadius: 4,
-                            color: Colors.black87,
-                            offset: Offset(1, 1),
-                          )
-                        ],
+                ),
+              ),
+            if (_showUI)
+              Positioned(
+                bottom: 30,
+                left: 20,
+                right: 20,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widget.title != null && widget.title!.isNotEmpty)
+                      Text(
+                        widget.title!,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 4,
+                              color: Colors.black87,
+                              offset: Offset(1, 1),
+                            )
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
+                    if (widget.phrase != null && widget.phrase!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          widget.phrase!,
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 4,
+                                color: Colors.black87,
+                                offset: Offset(1, 1),
+                              )
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

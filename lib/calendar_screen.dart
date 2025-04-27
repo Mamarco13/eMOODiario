@@ -381,24 +381,76 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     return Scaffold(
       backgroundColor: Color(0xFFF3F6FD),
       appBar: AppBar(
-        title: Text('Mis Recuerdos', style: TextStyle(color: Colors.black)),
+        title: Image.asset(
+          'assets/EMOODIARIO.png',
+          height: 65, // Ajusta altura si quieres
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         iconTheme: IconThemeData(color: Colors.black),
       ),
+      
       body: Column(
         children: [
           if (_selectedDay != null) _buildEmotionPreview(_selectedDay!),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: GridView.count(
-                crossAxisCount: 7,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                children: dayWidgets,
-              ),
+            child: Column(
+              children: [
+                // Nuevo header con flechas y mes
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.arrow_back_ios),
+                        onPressed: () {
+                          setState(() {
+                            _focusedDate = DateTime(
+                              _focusedDate.year,
+                              _focusedDate.month - 1,
+                            );
+                            _selectedDay = null;
+                          });
+                        },
+                      ),
+                      Text(
+                        DateFormat('MMMM yyyy', 'es_ES').format(_focusedDate).toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.arrow_forward_ios),
+                        onPressed: () {
+                          setState(() {
+                            _focusedDate = DateTime(
+                              _focusedDate.year,
+                              _focusedDate.month + 1,
+                            );
+                            _selectedDay = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                // Ahora el calendario
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: GridView.count(
+                      physics: NeverScrollableScrollPhysics(), // 👈 Evita que puedas scrollear
+                      crossAxisCount: 7,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      children: dayWidgets,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -428,6 +480,8 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
   late PageController _controller;
   late int _currentIndex;
   bool _showUI = true;
+  VideoPlayerController? _videoController;
+  bool _isPlaying = false;
 
   @override
   void initState() {
@@ -439,7 +493,21 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
   @override
   void dispose() {
     _controller.dispose();
+    _videoController?.dispose();
     super.dispose();
+  }
+
+  Future<File?> getVideoThumbnail(File videoFile) async {
+    final thumbPath = await VideoThumbnail.thumbnailFile(
+      video: videoFile.path,
+      imageFormat: ImageFormat.PNG,
+      maxWidth: 500,
+      quality: 75,
+    );
+    if (thumbPath != null) {
+      return File(thumbPath);
+    }
+    return null;
   }
 
   Future<void> _downloadCurrentImage() async {
@@ -471,7 +539,7 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
     }
   }
 
-  void _showOptionsMenu() {
+void _showOptionsMenu() {
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -504,6 +572,17 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
     );
   }
 
+  Future<void> _playVideo(File videoFile) async {
+    _videoController?.dispose();
+    _videoController = VideoPlayerController.file(videoFile);
+    await _videoController!.initialize();
+    _videoController!.setLooping(true);
+    await _videoController!.play();
+    setState(() {
+      _isPlaying = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaList = widget.mediaList;
@@ -524,22 +603,92 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
               onPageChanged: (index) {
                 setState(() {
                   _currentIndex = index;
+                  _isPlaying = false;
+                  _videoController?.pause();
                 });
               },
               itemBuilder: (context, index) {
                 final media = mediaList[index];
-                return Center(
-                  child: Hero(
-                    tag: media.file.path,
-                    child: Image.file(
-                      media.file,
-                      fit: BoxFit.contain,
+
+                if (media.isVideo) {
+                  if (_isPlaying && _currentIndex == index && _videoController != null && _videoController!.value.isInitialized) {
+                    final videoSize = _videoController!.value.size;
+                    final screenSize = MediaQuery.of(context).size;
+
+                    final videoAspectRatio = videoSize.width / videoSize.height;
+                    final screenAspectRatio = screenSize.width / screenSize.height;
+
+                    double displayWidth;
+                    double displayHeight;
+
+                    if (videoAspectRatio > screenAspectRatio) {
+                      // Video más ancho que pantalla
+                      displayWidth = screenSize.width;
+                      displayHeight = screenSize.width / videoAspectRatio;
+                    } else {
+                      // Video más alto o igual de proporcionado
+                      displayHeight = screenSize.height;
+                      displayWidth = screenSize.height * videoAspectRatio;
+                    }
+
+                    return Center(
+                      child: SizedBox(
+                        width: displayWidth,
+                        height: displayHeight,
+                        child: VideoPlayer(_videoController!),
+                      ),
+                    );
+                  }else if (_isPlaying && _currentIndex != index) {
+                    return Center(
+                      child: Icon(Icons.play_circle_fill, color: Colors.white.withOpacity(0.8), size: 50),
+                    );
+
+                  } else {
+                    return FutureBuilder<File?>(
+                      future: getVideoThumbnail(media.file),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.file(
+                              snapshot.data!,
+                              fit: BoxFit.contain,
+                            ),
+                            Center(
+                              child: GestureDetector(
+                                onTap: () => _playVideo(media.file),
+                                child: Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black45,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.play_arrow, color: Colors.white, size: 50),
+                                ),
+                              ),
+                            )
+                          ],
+                        );
+                      },
+                    );
+                  }
+                } else {
+                  return Center(
+                    child: Hero(
+                      tag: media.file.path,
+                      child: Image.file(
+                        media.file,
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               },
             ),
-            if (_showUI)
+            if (_showUI) ...[
               Positioned(
                 top: 40,
                 left: 20,
@@ -555,12 +704,11 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
                   ),
                 ),
               ),
-            if (_showUI)
               Positioned(
                 top: 40,
                 right: 20,
                 child: GestureDetector(
-                  onTap: _showOptionsMenu,
+                  onTap: () => _showOptionsMenu(),
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.black54,
@@ -571,7 +719,6 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
                   ),
                 ),
               ),
-            if (_showUI)
               Positioned(
                 bottom: 30,
                 left: 20,
@@ -586,13 +733,7 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
                           color: Colors.white,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                              blurRadius: 4,
-                              color: Colors.black87,
-                              offset: Offset(1, 1),
-                            )
-                          ],
+                          shadows: [Shadow(blurRadius: 4, color: Colors.black87, offset: Offset(1, 1))],
                         ),
                       ),
                     if (widget.phrase != null && widget.phrase!.isNotEmpty)
@@ -603,25 +744,22 @@ class _FullScreenImagePageState extends State<FullScreenImagePage> {
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 16,
-                            shadows: [
-                              Shadow(
-                                blurRadius: 4,
-                                color: Colors.black87,
-                                offset: Offset(1, 1),
-                              )
-                            ],
+                            shadows: [Shadow(blurRadius: 4, color: Colors.black87, offset: Offset(1, 1))],
                           ),
                         ),
                       ),
                   ],
                 ),
+              
               ),
+            ]
           ],
         ),
       ),
     );
   }
 }
+
 
 class MediaFile {
   final File file;

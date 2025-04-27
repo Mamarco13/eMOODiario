@@ -22,9 +22,12 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
   Map<DateTime, Map<String, dynamic>> dayData = {};
 
+
+late PageController _pageController;
 @override
 void initState() {
   super.initState();
+  _pageController = PageController();
   final box = Hive.box('emotionsBox');
   final Map<DateTime, Map<String, dynamic>> loadedData = {};
 
@@ -55,7 +58,8 @@ void initState() {
 }
 
   @override
-  void dispose() {
+  void dispose(){
+    _pageController.dispose();
     _videoController?.dispose();
     super.dispose();
   }
@@ -220,46 +224,68 @@ Widget _buildEmotionPreview(int day) {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (_isHolding && _videoController != null && _videoController!.value.isInitialized)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: VideoPlayer(_videoController!),
-              )
-            else if (currentMedia != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: FutureBuilder<File?>(
-                  future: currentMedia.isVideo
-                      ? getVideoThumbnail(currentMedia.file)
-                      : Future.value(currentMedia.file),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return Center(child: CircularProgressIndicator());
-                    }
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.file(
-                          snapshot.data!,
-                          fit: BoxFit.cover,
-                        ),
-                        if (currentMedia.isVideo && !_isHolding)
-                          Positioned(
-                            bottom: 8,
-                            right: 8,
-                            child: Icon(Icons.play_circle_fill, color: Colors.white.withOpacity(0.8), size: 28),
-                          ),
-                      ],
-                    );
-                  },
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: AnimatedSwitcher(
+                duration: Duration(milliseconds: 400),
+                switchInCurve: Curves.easeIn,
+                switchOutCurve: Curves.easeOut,
+                child: currentMedia != null
+                    ? FutureBuilder<File?>(
+                        key: ValueKey(currentMedia.file.path),
+                        future: currentMedia.isVideo
+                            ? getVideoThumbnail(currentMedia.file)
+                            : Future.value(currentMedia.file),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return Center(child: CircularProgressIndicator());
+                          }
+                          return Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.file(
+                                snapshot.data!,
+                                fit: BoxFit.cover,
+                              ),
+                              if (currentMedia.isVideo && !_isHolding)
+                                Positioned(
+                                  bottom: 8,
+                                  right: 8,
+                                  child: Icon(Icons.play_circle_fill, color: Colors.white.withOpacity(0.8), size: 28),
+                                ),
+                            ],
+                          );
+                        },
+                      )
+                    : Container(),
               ),
+            ),
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 gradient: gradient,
               ),
             ),
+            if (!_isHolding)
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Row(
+                  children: List.generate(mediaList.length, (index) {
+                    bool isActive = index == _currentMediaIndex;
+                    return AnimatedContainer(
+                      duration: Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: isActive ? 10 : 6,
+                      height: isActive ? 10 : 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isActive ? Colors.white : Colors.white.withOpacity(0.5),
+                      ),
+                    );
+                  }),
+                ),
+              ),
             if (!_isHolding)
               Padding(
                 padding: const EdgeInsets.all(12.0),

@@ -18,6 +18,8 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProviderStateMixin {
   DateTime _focusedDate = DateTime.now();
   int? _selectedDay;
+  DateTime? _selectedDayReference;
+  int? _selectedPreviewDay;
   int _currentMediaIndex = 0;
   bool _isHolding = false;
   VideoPlayerController? _videoController;
@@ -54,6 +56,13 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
     setState(() {
       dayData = loadedData;
+      final today = DateTime.now();
+      setState(() {
+        _selectedDay = today.day;
+        _selectedPreviewDay = today.day;
+        _selectedDayReference = today;
+        _focusedDate = DateTime(today.year, today.month); // centramos el calendario en este mes también
+      });
     });
   }
 
@@ -103,6 +112,25 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     return 1.0;
   }
 
+  Color getColor1ForDate(DateTime date) {
+    final colores = calcularColoresDelDia(date);
+    return colores.isNotEmpty ? colores.keys.first : Colors.grey.shade300;
+  }
+
+  Color? getColor2ForDate(DateTime date) {
+    final colores = calcularColoresDelDia(date);
+    return colores.length > 1 ? colores.keys.elementAt(1) : null;
+  }
+
+  double getPercentageForDate(DateTime date) {
+    final colores = calcularColoresDelDia(date);
+    if (colores.length >= 2) {
+      final total = colores.values.elementAt(0) + colores.values.elementAt(1);
+      return colores.values.elementAt(0) / total;
+    }
+    return 1.0;
+  }
+
   Future<File?> getVideoThumbnail(File videoFile) async {
     final tempDir = await getTemporaryDirectory();
     final thumb = await VideoThumbnail.thumbnailFile(
@@ -119,14 +147,18 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
   }
 
   Widget _buildEmotionPreview(int day) {
-    final date = DateTime(_focusedDate.year, _focusedDate.month, day);
+    final date = DateTime(
+      _selectedDayReference!.year,
+      _selectedDayReference!.month,
+      day,
+    );
     final data = dayData[date];
     final mediaList = data?['media'] ?? [];
 
     if (_selectedDay != day) _currentMediaIndex = 0;
 
-    final color1 = getColor1ForDay(day);
-    final color2 = getColor2ForDay(day);
+    final color1 = getColor1ForDate(date);
+    final color2 = getColor2ForDate(date);
     final gradient = color2 != null
         ? LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [color1.withOpacity(0.5), color2.withOpacity(0.5)])
         : LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [color1.withOpacity(0.5), color1.withOpacity(0.3)]);
@@ -143,7 +175,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
           date: date,
           initialColor1: color1,
           initialColor2: color2,
-          initialPercentage: getPercentageForDay(day),
+          initialPercentage: getPercentageForDate(date),
         ),
         settings: RouteSettings(
           arguments: {
@@ -347,7 +379,11 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     }
 
     for (int day = 1; day <= totalDaysInMonth; day++) {
-      final isSelected = _selectedDay == day;
+      final isSelected = _selectedDay != null && _selectedDayReference != null &&
+    _selectedDay == day &&
+    _focusedDate.month == _selectedDayReference!.month &&
+    _focusedDate.year == _selectedDayReference!.year;
+
       final hasTwoEmotions = getColor2ForDay(day) != null;
       final double scaleFactor = isSelected ? (hasTwoEmotions ? 0.6 : 0.75) : 1.0;
 
@@ -355,6 +391,8 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
         onTap: () {
           setState(() {
             _selectedDay = day;
+            _selectedPreviewDay = day;
+            _selectedDayReference = DateTime(_focusedDate.year, _focusedDate.month, day);
           });
         },
         child: TweenAnimationBuilder<double>(
@@ -393,7 +431,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
       
       body: Column(
         children: [
-          if (_selectedDay != null) _buildEmotionPreview(_selectedDay!),
+          if (_selectedPreviewDay  != null) _buildEmotionPreview(_selectedPreviewDay!),
           Expanded(
             child: Column(
               children: [
@@ -408,10 +446,9 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                         onPressed: () {
                           setState(() {
                             _focusedDate = DateTime(
-                              _focusedDate.year,
-                              _focusedDate.month - 1,
+                            _focusedDate.year,
+                            _focusedDate.month - 1,
                             );
-                            _selectedDay = null;
                           });
                         },
                       ),
@@ -426,11 +463,10 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                         icon: Icon(Icons.arrow_forward_ios),
                         onPressed: () {
                           setState(() {
-                            _focusedDate = DateTime(
+                              _focusedDate = DateTime(
                               _focusedDate.year,
-                              _focusedDate.month + 1,
+                              _focusedDate.month +1,
                             );
-                            _selectedDay = null;
                           });
                         },
                       ),

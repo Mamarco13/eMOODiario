@@ -2,6 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
+//Colores mejorados
+const Color softYellow = Colors.yellow;// Alegría - amarillo dorado
+const Color softRed = Color.fromARGB(255, 253, 27, 27);    // Ira - rojo fuerte
+const Color softBlue = Colors.blueAccent;   // Tristeza - azul vivo
+const Color softPink = Color.fromARGB(255, 250, 127, 182);   // Enamoramiento - rosa intenso
+const Color softOrange = Color.fromARGB(255, 255, 168, 38); // Ansiedad - naranja mandarina
+const Color softPurple = Colors.purple; // Miedo - morado fuerte
+
+
+
+
 class MediaFile {
   final File file;
   final bool isVideo;
@@ -65,13 +76,23 @@ class _EditDayScreenState extends State<EditDayScreen> {
   final maxMediaCount = 3;
 
   final List<Color> availableColors = [
-    Colors.yellow,
-    Colors.red,
-    Colors.blue,
-    Colors.green,
-    Colors.orange,
-    Colors.purple,
+    softYellow,
+    softRed,
+    softBlue,
+    softPink,
+    softOrange,
+    softPurple,
   ];
+
+  final Map<Color, String> colorToEmotion = {
+    softYellow: 'Alegría',
+    softRed: 'Ira',
+    softBlue: 'Tristeza',
+    softPink: 'Enamoramiento',
+    softOrange: 'Ansiedad',
+    softPurple: 'Miedo',
+};
+
 
   @override
   void dispose() {
@@ -156,117 +177,157 @@ class _EditDayScreenState extends State<EditDayScreen> {
               decoration: InputDecoration(hintText: '¿Cómo te sentiste?'),
             ),
             const SizedBox(height: 30),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Multimedia (${mediaFiles.length}/$maxMediaCount)', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 20,
-                      children: [
-                        ...mediaFiles.asMap().entries.map((entry) {
-                          int i = entry.key;
-                          MediaFile file = entry.value;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Stack(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(
-                                      file.file,
-                                      width: 100,
-                                      height: 100,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                  if (file.isVideo)
-                                    Positioned(
-                                      bottom: 4,
-                                      right: 4,
-                                      child: Icon(Icons.play_circle_fill, color: Colors.white, size: 24),
-                                    ),
-                                  Positioned(
-                                    top: 0,
-                                    right: 0,
-                                    child: GestureDetector(
-                                      onTap: () => removeMedia(i),
-                                      child: CircleAvatar(
-                                        radius: 12,
-                                        backgroundColor: Colors.red,
-                                        child: Icon(Icons.close, size: 14, color: Colors.white),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 6,
-                                children: availableColors.map((color) {
-                                  final isSelected = color == file.color1 || color == file.color2;
-                                  return GestureDetector(
-                                    onTap: () => toggleColorSelection(file, color),
-                                    child: Container(
-                                      width: 30,
-                                      height: 30,
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(width: 2, color: isSelected ? Colors.black : Colors.transparent),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              if (file.color2 != null) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 400, // 👈 O el tamaño que quieras, 400px suele quedar bien en móvil
+              ),
+              child: Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text('Multimedia (${mediaFiles.length}/$maxMediaCount)', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 20,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ...mediaFiles.asMap().entries.map((entry) {
+                            int i = entry.key;
+                            MediaFile file = entry.value;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Stack(
                                   children: [
-                                    Text('1', style: TextStyle(color: file.color1)),
-                                    Text('2', style: TextStyle(color: file.color2))
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(
+                                        file.file,
+                                        width: 100,
+                                        height: 100,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    if (file.isVideo)
+                                      Positioned(
+                                        bottom: 4,
+                                        right: 4,
+                                        child: Icon(Icons.play_circle_fill, color: Colors.white, size: 24),
+                                      ),
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: GestureDetector(
+                                        onTap: () => removeMedia(i),
+                                        child: CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: Colors.red,
+                                          child: Icon(Icons.close, size: 14, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                Slider(
-                                  value: file.percentage,
-                                  min: 0,
-                                  max: 1,
-                                  onChanged: (val) => setState(() => file.percentage = val),
-                                )
-                              ]
-                            ],
-                          );
-                        }).toList(),
-                        if (mediaFiles.length < maxMediaCount)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildMediaButton(Icons.photo, () => pickMedia(fromCamera: false)),
-                              SizedBox(width: 8),
-                              _buildMediaButton(Icons.camera_alt, () => pickMedia(fromCamera: true)),
-                              SizedBox(width: 8),
-                              _buildMediaButton(Icons.videocam, () => pickMedia(fromCamera: false, isVideo: true)),
-                            ],
-                          )
-                      ],
-                    ),
-                  ],
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  children: availableColors.map((color) {
+                                    final isSelected = color == file.color1 || color == file.color2;
+                                    return GestureDetector(
+                                      onTap: () => toggleColorSelection(file, color),
+                                      child: Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: color,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(width: 2, color: isSelected ? Colors.black : Colors.transparent),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                if (file.color2 != null) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('1', style: TextStyle(color: file.color1)),
+                                      Text('2', style: TextStyle(color: file.color2))
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            colorToEmotion[file.color1] ?? '',
+                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: file.color1),
+                                          ),
+                                          Text(
+                                            colorToEmotion[file.color2!] ?? '',
+                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: file.color2),
+                                          ),
+                                        ],
+                                      ),
+                                      SliderTheme(
+                                        data: SliderTheme.of(context).copyWith(
+                                          trackHeight: 8,
+                                          activeTrackColor: file.color2 != null
+                                              ? null
+                                              : file.color1,
+                                          inactiveTrackColor: file.color2 != null
+                                              ? null
+                                              : file.color1.withOpacity(0.3),
+                                          trackShape: file.color2 != null
+                                              ? _GradientSliderTrack(file.color1, file.color2!)
+                                              : null,
+                                        ),
+                                        child: Slider(
+                                          value: file.percentage,
+                                          min: 0,
+                                          max: 1,
+                                          onChanged: (val) => setState(() => file.percentage = val),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                ]
+                              ],
+                            );
+                          }).toList(),
+                          if (mediaFiles.length < maxMediaCount)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildMediaButton(Icons.photo, () => pickMedia(fromCamera: false)),
+                                SizedBox(width: 8),
+                                _buildMediaButton(Icons.camera_alt, () => pickMedia(fromCamera: true)),
+                                SizedBox(width: 8),
+                                _buildMediaButton(Icons.videocam, () => pickMedia(fromCamera: false, isVideo: true)),
+                              ],
+                            )
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+          )
+        ),
             const SizedBox(height: 30),
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurpleAccent,
+                  backgroundColor: Colors.green,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                 ),
@@ -277,7 +338,7 @@ class _EditDayScreenState extends State<EditDayScreen> {
                     'media': mediaFiles.map((m) => m.toJson()).toList()
                   });
                 },
-                child: Text('Guardar', style: TextStyle(fontSize: 16)),
+                child: Text('Guardar', style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
             )
           ],
@@ -325,3 +386,65 @@ void didChangeDependencies() {
   }
 }
 }
+
+class _GradientSliderTrack extends SliderTrackShape {
+  final Color color1;
+  final Color color2;
+
+  _GradientSliderTrack(this.color1, this.color2);
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required Animation<double> enableAnimation,
+    bool isDiscrete = false,
+    bool isEnabled = false,
+    required RenderBox parentBox,
+    Offset? secondaryOffset,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+  }) {
+    final Paint activePaint = Paint()..color = color1;
+    final Paint inactivePaint = Paint()..color = color2 ?? color1.withOpacity(0.3);
+
+    final trackHeight = sliderTheme.trackHeight ?? 4;
+    final trackRadius = Radius.circular(trackHeight / 2);
+
+    final double trackLeft = offset.dx;
+    final double trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2;
+    final double trackRight = trackLeft + parentBox.size.width;
+    final double trackCenter = thumbCenter.dx;
+
+    final Rect activeTrackRect = Rect.fromLTRB(trackLeft, trackTop, trackCenter, trackTop + trackHeight);
+    final Rect inactiveTrackRect = Rect.fromLTRB(trackCenter, trackTop, trackRight, trackTop + trackHeight);
+
+    context.canvas.drawRRect(
+      RRect.fromRectAndRadius(activeTrackRect, trackRadius),
+      activePaint,
+    );
+
+    context.canvas.drawRRect(
+      RRect.fromRectAndRadius(inactiveTrackRect, trackRadius),
+      inactivePaint,
+    );
+  }
+
+  @override
+  Rect getPreferredRect({
+    required RenderBox parentBox,
+    Offset offset = Offset.zero,
+    required SliderThemeData sliderTheme,
+    bool isEnabled = false,
+    bool isDiscrete = false,
+  }) {
+    final double trackHeight = sliderTheme.trackHeight ?? 2;
+    final double trackLeft = offset.dx;
+    final double trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2;
+    final double trackWidth = parentBox.size.width;
+    return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);
+  }
+
+}
+

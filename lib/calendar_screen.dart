@@ -24,6 +24,11 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
   bool _isHolding = false;
   VideoPlayerController? _videoController;
   late PageController _pageController;
+  Color dominantEmotionColor = Colors.white;
+  int previousMonth = DateTime.now().month;
+  bool isForward = true;
+
+
 
   Map<DateTime, Map<String, dynamic>> dayData = {};
 
@@ -72,6 +77,34 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     _videoController?.dispose();
     super.dispose();
   }
+
+  void updateDominantEmotionColor() {
+    final Map<Color, double> emotionSum = {};
+
+    final firstDay = DateTime(_focusedDate.year, _focusedDate.month, 1);
+    final totalDays = DateTime(_focusedDate.year, _focusedDate.month + 1, 0).day;
+
+    for (int day = 1; day <= totalDays; day++) {
+      final date = DateTime(_focusedDate.year, _focusedDate.month, day);
+      final coloresDelDia = calcularColoresDelDia(date);
+      for (final entry in coloresDelDia.entries) {
+        emotionSum[entry.key] = (emotionSum[entry.key] ?? 0) + entry.value;
+      }
+    }
+
+    if (emotionSum.isNotEmpty) {
+      final sorted = emotionSum.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      setState(() {
+        dominantEmotionColor = sorted.first.key;
+      });
+    } else {
+      setState(() {
+        dominantEmotionColor = Colors.white;
+      });
+    }
+  }
+
 
   Map<Color, double> calcularColoresDelDia(DateTime date) {
     final mediaList = dayData[date]?['media'] ?? [];
@@ -418,79 +451,104 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
     return Scaffold(
       backgroundColor: Color(0xFFF3F6FD),
-      appBar: AppBar(
-        title: Image.asset(
-          'assets/EMOODIARIO.png',
-          height: 65, // Ajusta altura si quieres
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(kToolbarHeight),
+        child: AnimatedSwitcher(
+          duration: Duration(milliseconds: 500),
+          transitionBuilder: (child, animation) {
+            final offsetAnimation = Tween<Offset>(
+              begin: Offset(isForward ? 1.0 : -1.0, 0),
+              end: Offset.zero,
+            ).animate(animation);
+
+            return SlideTransition(
+              position: offsetAnimation,
+              child: child,
+            );
+          },
+          child: AppBar(
+            key: ValueKey(dominantEmotionColor.value), // 👈 clave para que AnimatedSwitcher detecte el cambio
+            backgroundColor: dominantEmotionColor.withOpacity(0.9),
+            elevation: 0,
+            centerTitle: true,
+            title: Image.asset(
+              'assets/EMOODIARIO.png',
+              height: 65,
+            ),
+            iconTheme: IconThemeData(color: Colors.white),
+          ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: Colors.black),
       ),
-      
-      body: Column(
-        children: [
-          if (_selectedPreviewDay  != null) _buildEmotionPreview(_selectedPreviewDay!),
-          Expanded(
-            child: Column(
-              children: [
-                // Nuevo header con flechas y mes
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.arrow_back_ios),
-                        onPressed: () {
-                          setState(() {
-                            _focusedDate = DateTime(
-                            _focusedDate.year,
-                            _focusedDate.month - 1,
-                            );
-                          });
-                        },
-                      ),
-                      Text(
-                        DateFormat('MMMM yyyy', 'es_ES').format(_focusedDate).toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+
+      body: AnimatedContainer(
+        duration: Duration(milliseconds: 800),
+        curve: Curves.easeInOut,
+        color: dominantEmotionColor.withOpacity(0.15), // 👈 Para que sea suave, no demasiado fuerte
+        child: Column(
+          children: [
+            if (_selectedPreviewDay  != null) _buildEmotionPreview(_selectedPreviewDay!),
+            Expanded(
+              child: Column(
+                children: [
+                  // Nuevo header con flechas y mes
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_back_ios),
+                          onPressed: () {
+                            final newDate = DateTime(_focusedDate.year, _focusedDate.month - 1); // o -1 según el botón
+                            setState(() {
+                              isForward = newDate.month > previousMonth;
+                              previousMonth = newDate.month;
+                              _focusedDate = newDate;
+                            });
+                            updateDominantEmotionColor();
+                          },
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.arrow_forward_ios),
-                        onPressed: () {
-                          setState(() {
-                              _focusedDate = DateTime(
-                              _focusedDate.year,
-                              _focusedDate.month +1,
-                            );
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                // Ahora el calendario
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: GridView.count(
-                      physics: NeverScrollableScrollPhysics(), // 👈 Evita que puedas scrollear
-                      crossAxisCount: 7,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      children: dayWidgets,
+                        Text(
+                          DateFormat('MMMM yyyy', 'es_ES').format(_focusedDate).toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.arrow_forward_ios),
+                          onPressed: () {
+                            final newDate = DateTime(_focusedDate.year, _focusedDate.month + 1); // o -1 según el botón
+                            setState(() {
+                              isForward = newDate.month > previousMonth;
+                              previousMonth = newDate.month;
+                              _focusedDate = newDate;
+                            });
+                            updateDominantEmotionColor();
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  // Ahora el calendario
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: GridView.count(
+                        physics: NeverScrollableScrollPhysics(), // 👈 Evita que puedas scrollear
+                        crossAxisCount: 7,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        children: dayWidgets,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      )
     );
   }
 }

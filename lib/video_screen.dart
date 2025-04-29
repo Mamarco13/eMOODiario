@@ -133,6 +133,43 @@ if (ReturnCode.isSuccess(returnCode)) {
 }
 
 
+  Future<List<File>> getAllMediaFilesInStorage() async {
+  final tempDir = await getTemporaryDirectory();
+  final files = tempDir.listSync(recursive: true)
+      .whereType<File>()
+      .toList();
+  return files;
+}
+
+List<String> getValidMediaPaths(Map<DateTime, Map<String, dynamic>> dayData) {
+  final validPaths = <String>[];
+
+  dayData.forEach((date, data) {
+    final mediaList = data['media'] as List<dynamic>? ?? [];
+    for (final media in mediaList) {
+      validPaths.add(media.file.path);
+    }
+  });
+
+  return validPaths;
+}
+
+Future<void> cleanOrphanFiles(Map<DateTime, Map<String, dynamic>> dayData) async {
+  final allFiles = await getAllMediaFilesInStorage();
+  final validPaths = getValidMediaPaths(dayData);
+
+  for (final file in allFiles) {
+    if (!validPaths.contains(file.path)) {
+      try {
+        await file.delete();
+        print('🗑️ Archivo huérfano eliminado: ${file.path}');
+      } catch (e) {
+        print('⚠️ Error al eliminar archivo: ${file.path}');
+      }
+    }
+  }
+}
+
 
   final FlutterLocalNotificationsPlugin notificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -140,6 +177,7 @@ if (ReturnCode.isSuccess(returnCode)) {
   void initState() {
     super.initState();
     _initNotifications();
+    cleanOrphanFiles(widget.dayData);
   }
 
   Future<void> _initNotifications() async {

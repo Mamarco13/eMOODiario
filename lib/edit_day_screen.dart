@@ -119,11 +119,24 @@ class _EditDayScreenState extends State<EditDayScreen> {
     }
   }
 
-  void removeMedia(int index) {
+  void removeMedia(int index) async {
+    final media = mediaFiles[index];
+
+    // 1. Eliminar físicamente el archivo si existe
+    if (await media.file.exists()) {
+      await media.file.delete();
+      print('🗑️ Archivo físico eliminado: ${media.file.path}');
+    }
+
+    // 2. Eliminar del array de memoria
     setState(() {
       mediaFiles.removeAt(index);
     });
+
+    // 3. (Opcional) Actualizar en Hive aquí si quieres que se guarde inmediatamente
+    // O se puede actualizar solo al pulsar "Guardar" como ya haces en el botón "Guardar"
   }
+
 
   void toggleColorSelection(MediaFile media, Color color) {
     setState(() {

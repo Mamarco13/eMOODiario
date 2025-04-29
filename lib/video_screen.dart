@@ -1,3 +1,5 @@
+// Reemplazo completo del archivo VideoScreen con concatenación robusta (sin guardar en galería)
+
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -24,6 +26,32 @@ class _VideoScreenState extends State<VideoScreen> {
   double fakeProgress = 0.0;
   Timer? _progressTimer;
   File? generatedVideoFile;
+
+  Future<File> _convertImageToVideo(File imageFile) async {
+    final tempDir = await getTemporaryDirectory();
+    final nameWithoutExtension = imageFile.uri.pathSegments.last.split('.').first;
+    final videoPath = '${tempDir.path}/${nameWithoutExtension}_image.mp4';
+
+    final command = [
+      '-loop', '1',
+      '-i', imageFile.path,
+      '-f', 'lavfi',
+      '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+      '-t', '2',
+      '-r', '30',
+      '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
+      '-c:v', 'libx264',
+      '-b:v', '1500k',
+      '-pix_fmt', 'yuv420p',
+      '-shortest',
+      '-movflags', '+faststart',
+      '-y',
+      videoPath,
+    ].join(' ');
+
+    await FFmpegKit.execute(command);
+    return File(videoPath);
+  }
 
   final FlutterLocalNotificationsPlugin notificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -137,52 +165,88 @@ class _VideoScreenState extends State<VideoScreen> {
     );
   }
 
-  void _startGeneratingVideo() async {
-    setState(() {
-      isGenerating = true;
-      fakeProgress = 0.0;
-    });
-
-    _startFakeProgress();
-
-    List<File> mediaFiles = _prepareMediaFiles();
-
-    if (mediaFiles.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No hay archivos multimedia para crear el video.')));
-      _stopFakeProgress();
-      return;
-    }
-
-    final tempDir = await getTemporaryDirectory();
-    final inputFile = File('${tempDir.path}/input.txt');
-    final videoOutput = File('${tempDir.path}/video_recuerdo_${DateTime.now().millisecondsSinceEpoch}.mp4');
-
-    String inputContent = '';
-    for (final file in mediaFiles) {
-      inputContent += "file '${file.path.replaceAll("'", "\\'")}'\n";
-    }
-    await inputFile.writeAsString(inputContent);
-
-    final ffmpegCommand = "-f concat -safe 0 -i ${inputFile.path} -c:v libx264 -preset veryfast ${videoOutput.path}";
-
-    await FFmpegKit.executeAsync(ffmpegCommand, (session) async {
-      _stopFakeProgress();
-
-      final returnCode = await session.getReturnCode();
-      if (ReturnCode.isSuccess(returnCode)) {
-        print('Video creado: ${videoOutput.path}');
-        setState(() {
-          generatedVideoFile = videoOutput;
-        });
-
-        if (mounted) {
-          _showVideoReadyDialog();
-        }
-      } else {
-        print('Error al generar el video');
-      }
-    });
+  Future<bool> _checkHasAudio(File file) async {
+    final session = await FFmpegKit.execute('-i "${file.path}"');
+    final output = await session.getAllLogsAsString();
+    return output?.contains('Audio:') ?? false;
   }
+
+
+void _startGeneratingVideo() async {
+  setState(() {
+    isGenerating = true;
+    fakeProgress = 0.0;
+  });
+
+  _startFakeProgress();
+
+  List<File> mediaFiles = _prepareMediaFiles();
+
+  if (mediaFiles.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No hay archivos multimedia para crear el video.')));
+    _stopFakeProgress();
+    return;
+  }
+
+  final tempDir = await getTemporaryDirectory();
+  final inputFile = File('${tempDir.path}/input.txt');
+  final videoOutput = File('${tempDir.path}/video_recuerdo_${DateTime.now().millisecondsSinceEpoch}.mp4');
+
+  List<File> finalVideos = [];
+
+  for (final file in mediaFiles) {
+    if (file.path.toLowerCase().endsWith('.mp4')) {
+      finalVideos.add(file);
+    } else if (file.path.toLowerCase().endsWith('.jpg') || file.path.toLowerCase().endsWith('.jpeg') || file.path.toLowerCase().endsWith('.png')) {
+      final videoFromImage = await _convertImageToVideo(file);
+      finalVideos.add(videoFromImage);
+    }
+  }
+
+  // Construye input.txt
+  String inputContent = '';
+  for (final file in finalVideos) {
+    if (file.existsSync()) {
+      inputContent += "file '${file.path}'\n";
+    } else {
+      print('⚠️ Excluido por no existir: ${file.path}');
+    }
+  }
+
+  if (inputContent.trim().isEmpty) {
+    _stopFakeProgress();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No hay vídeos válidos.')));
+    return;
+  }
+
+  await inputFile.writeAsString(inputContent);
+  print('📄 input.txt:\n$inputContent');
+
+  // Comando robusto con demuxer
+  final ffmpegCommand = "-f concat -safe 0 -i ${inputFile.path} -c copy -y ${videoOutput.path}";
+
+  await FFmpegKit.executeAsync(ffmpegCommand, (session) async {
+    final logs = await session.getAllLogsAsString();
+    print('📋 FFmpeg logs:\n$logs');
+
+    _stopFakeProgress();
+
+    final returnCode = await session.getReturnCode();
+    if (ReturnCode.isSuccess(returnCode)) {
+      print('✅ Video creado: ${videoOutput.path}');
+      setState(() {
+        generatedVideoFile = videoOutput;
+      });
+
+      if (mounted) {
+        _showVideoReadyDialog();
+      }
+    } else {
+      print('❌ Error al generar el video');
+    }
+  });
+}
+
 
   void _startFakeProgress() {
     _progressTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
@@ -219,7 +283,7 @@ class _VideoScreenState extends State<VideoScreen> {
     for (final entry in filteredDays) {
       final mediaList = entry.value['media'] as List<dynamic>? ?? [];
       for (final media in mediaList) {
-        mediaFiles.add(File(media['path']));
+        mediaFiles.add(media.file);
       }
     }
 

@@ -33,6 +33,36 @@ class _VideoScreenState extends State<VideoScreen> {
   Timer? _progressTimer;
   File? generatedVideoFile;
 
+  Future<File> _normalizeVideo(File inputFile) async {
+    final tempDir = await getTemporaryDirectory();
+    final outputFile = File('${tempDir.path}/${inputFile.uri.pathSegments.last}_norm.mp4');
+
+    final command = [
+      '-i', inputFile.path,
+      '-r', '30',
+      '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
+      '-c:v', 'mpeg4',
+      '-b:v', '1000k',
+      '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      '-y', outputFile.path,
+    ];
+
+    print('🎞️ Normalizando video original:\n${command.join(' ')}');
+    final session = await FFmpegKit.execute(command.join(' '));
+    final returnCode = await session.getReturnCode();
+    final logs = await session.getAllLogsAsString();
+
+    if (ReturnCode.isSuccess(returnCode)) {
+      return outputFile;
+    } else {
+      print('❌ Error al normalizar video:\n$logs');
+      throw Exception('Error al normalizar video');
+    }
+  }
+
+
   void _openCalendarDialog() async {
     DateTime now = DateTime.now();
     DateTime? picked = await showDatePicker(
@@ -277,7 +307,8 @@ void _startGeneratingVideo() async {
 
   for (final file in mediaFiles) {
     if (file.path.toLowerCase().endsWith('.mp4')) {
-      finalVideos.add(file);
+      final normalized = await _normalizeVideo(file);
+      finalVideos.add(normalized);
     } else if (file.path.toLowerCase().endsWith('.jpg') || file.path.toLowerCase().endsWith('.jpeg') || file.path.toLowerCase().endsWith('.png')) {
       final videoFromImage = await _convertImageToVideo(file);
       finalVideos.add(videoFromImage);
@@ -450,7 +481,7 @@ void _showVideoReadyDialog() async {
             onPressed: () {
               Share.shareXFiles(
                 [XFile(generatedVideoFile!.path)],
-                text: 'Mira este recuerdo 😊',
+                text: 'Mira este recuerdo 😊\n Video generado con EMOODIARIO, la mejor app para saber lo que sientes.\n <Enlace de Play Store>',
               );
             },
             child: Text('Compartir'),

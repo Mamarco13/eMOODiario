@@ -5,10 +5,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:open_file/open_file.dart';
 import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter/return_code.dart';
-import 'package:video_player/video_player.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -23,6 +21,10 @@ class VideoScreen extends StatefulWidget {
 }
 
 class _VideoScreenState extends State<VideoScreen> {
+  List<DateTime> selectedDays = [];
+  int maxDurationSeconds = 60; // Para el slider
+  bool includePhotos = true;   // Checkbox incluir fotos
+  bool includeVideos = true;   // Checkbox incluir videos
   String rangeOption = 'Mes completo';
   List<String> selectedEmotions = [];
   bool shuffleMedia = false;
@@ -30,6 +32,29 @@ class _VideoScreenState extends State<VideoScreen> {
   double fakeProgress = 0.0;
   Timer? _progressTimer;
   File? generatedVideoFile;
+
+  void _openCalendarDialog() async {
+    DateTime now = DateTime.now();
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime(now.year - 2),
+      lastDate: DateTime(now.year + 2),
+    );
+
+    if (picked != null) {
+      setState(() {
+        final normalized = DateTime(picked.year, picked.month, picked.day);
+        if (!selectedDays.any((d) =>
+            d.year == normalized.year &&
+            d.month == normalized.month &&
+            d.day == normalized.day)) {
+          selectedDays.add(normalized);
+        }
+      });
+    }
+  }
+
 
 Future<File> _convertImageToVideo(File imageFile) async {
   final tempDir = await getTemporaryDirectory();
@@ -75,8 +100,6 @@ if (ReturnCode.isSuccess(returnCode)) {
 } else {
   throw Exception('Falló la conversión de imagen a video:\n$logs');
 }
-  // El executeAsync no retorna nada directamente, así que arriba capturas y manejas todo.
-  return File(videoPath); // Llegas aquí si todo fue bien
 }
 
 
@@ -118,7 +141,6 @@ if (ReturnCode.isSuccess(returnCode)) {
               value: rangeOption,
               items: [
                 'Mes completo',
-                'Rango de días',
                 'Seleccionar días concretos',
               ].map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
               onChanged: isGenerating ? null : (value) {
@@ -129,10 +151,47 @@ if (ReturnCode.isSuccess(returnCode)) {
                 }
               },
               decoration: InputDecoration(
-                labelText: 'Duración',
+                labelText: 'Tipo de video',
                 border: OutlineInputBorder(),
               ),
             ),
+            if (rangeOption == 'Seleccionar días concretos') ...[
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: isGenerating ? null : _openCalendarDialog,
+                child: Text('Seleccionar días en calendario'),
+              ),
+            ],
+            SizedBox(height: 24),
+            Text('Duración máxima del video (segundos)', style: Theme.of(context).textTheme.titleMedium),
+            Slider(
+              value: maxDurationSeconds.toDouble(),
+              min: 10,
+              max: 60,
+              divisions: 10,
+              label: '$maxDurationSeconds s',
+              onChanged: isGenerating ? null : (value) {
+                setState(() => maxDurationSeconds = value.toInt());
+              },
+            ),
+
+            SizedBox(height: 24),
+
+            CheckboxListTile(
+              title: Text('Incluir fotos'),
+              value: includePhotos,
+              onChanged: isGenerating ? null : (val) {
+                setState(() => includePhotos = val ?? true);
+              },
+            ),
+            CheckboxListTile(
+              title: Text('Incluir vídeos'),
+              value: includeVideos,
+              onChanged: isGenerating ? null : (val) {
+                setState(() => includeVideos = val ?? true);
+              },
+            ),
+
             SizedBox(height: 24),
             Text('Filtrar por emociones (opcional)', style: Theme.of(context).textTheme.titleMedium),
             SizedBox(height: 8),
@@ -193,12 +252,6 @@ if (ReturnCode.isSuccess(returnCode)) {
     );
   }
 
-  Future<bool> _checkHasAudio(File file) async {
-    final session = await FFmpegKit.execute('-i "${file.path}"');
-    final output = await session.getAllLogsAsString();
-    return output?.contains('Audio:') ?? false;
-  }
-
 
 void _startGeneratingVideo() async {
   setState(() {
@@ -251,7 +304,7 @@ void _startGeneratingVideo() async {
   print('📄 input.txt:\n$inputContent');
 
   // Comando robusto con demuxer
-  final ffmpegCommand = "-f concat -safe 0 -i ${inputFile.path} -c copy -y ${videoOutput.path}";
+  final ffmpegCommand = "-f concat -safe 0 -i ${inputFile.path} -c:v mpeg4 -b:v 1000k -c:a aac -b:a 128k -pix_fmt yuv420p -t $maxDurationSeconds -y ${videoOutput.path}";
 
   await FFmpegKit.executeAsync(ffmpegCommand, (session) async {
     final logs = await session.getAllLogsAsString();
@@ -294,7 +347,23 @@ void _startGeneratingVideo() async {
   }
 
   List<File> _prepareMediaFiles() {
-    List<MapEntry<DateTime, Map<String, dynamic>>> filteredDays = widget.dayData.entries.toList();
+    List<MapEntry<DateTime, Map<String, dynamic>>> allDays = widget.dayData.entries.toList();
+    List<MapEntry<DateTime, Map<String, dynamic>>> filteredDays = [];
+
+    if (rangeOption == 'Mes completo') {
+      final now = DateTime.now();
+      filteredDays = allDays.where((entry) =>
+        entry.key.month == now.month && entry.key.year == now.year
+      ).toList();
+    } else if (rangeOption == 'Seleccionar días concretos') {
+      filteredDays = allDays.where((entry) => 
+        selectedDays.any((selected) =>
+          selected.year == entry.key.year &&
+          selected.month == entry.key.month &&
+          selected.day == entry.key.day
+        )
+      ).toList();
+    }
 
     if (selectedEmotions.isNotEmpty) {
       filteredDays = filteredDays.where((entry) {
@@ -311,7 +380,14 @@ void _startGeneratingVideo() async {
     for (final entry in filteredDays) {
       final mediaList = entry.value['media'] as List<dynamic>? ?? [];
       for (final media in mediaList) {
-        mediaFiles.add(media.file);
+        final file = media.file;
+        final isVideo = file.path.toLowerCase().endsWith('.mp4');
+        final isPhoto = file.path.toLowerCase().endsWith('.jpg') ||
+                        file.path.toLowerCase().endsWith('.jpeg') ||
+                        file.path.toLowerCase().endsWith('.png');
+        if ((isVideo && includeVideos) || (isPhoto && includePhotos)) {
+          mediaFiles.add(file);
+        }
       }
     }
 
@@ -465,8 +541,6 @@ class _FullscreenVideoPageState extends State<FullscreenVideoPage> {
 
   @override
   Widget build(BuildContext context) {
-    final Size screen = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(

@@ -8,6 +8,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:open_file/open_file.dart';
 import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter/return_code.dart';
+import 'package:video_player/video_player.dart';
+import 'package:video_player/video_player.dart';
+import 'package:share_plus/share_plus.dart';
+
 
 class VideoScreen extends StatefulWidget {
   final Map<DateTime, Map<String, dynamic>> dayData;
@@ -307,57 +311,174 @@ void _startGeneratingVideo() async {
     return selectedEmotions.any((emotion) => emotionColorMap[emotion]?.value == color.value);
   }
 
-  void _showVideoReadyDialog() async {
-    if (generatedVideoFile == null) return;
+void _showVideoReadyDialog() async {
+  if (generatedVideoFile == null) return;
 
-    if (ModalRoute.of(context)?.isCurrent ?? false) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text('¡Vídeo generado!'),
-          content: Text('Tu vídeo está listo. ¿Quieres verlo ahora?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                OpenFile.open(generatedVideoFile!.path);
-              },
-              child: Text('Ver vídeo'),
-            ),
-          ],
+  final controller = VideoPlayerController.file(generatedVideoFile!);
+  await controller.initialize();
+
+  if (ModalRoute.of(context)?.isCurrent ?? false) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('¡Vídeo generado!'),
+        content: GestureDetector(
+          onTap: () {
+            Navigator.pop(context); // Cierra el diálogo
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FullscreenVideoPage(file: generatedVideoFile!),
+              ),
+            );
+          },
+          child: SizedBox(
+            width: controller.value.size.width,
+            height: controller.value.size.height,
+            child: VideoPlayer(controller),
+          ),
         ),
-      );
-    } else {
-      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-        'video_ready_channel',
-        'Vídeos generados',
-        importance: Importance.high,
-        priority: Priority.high,
-        showWhen: true,
-      );
+        actions: [
+          TextButton(
+            onPressed: () {
+              controller.dispose();
+              Navigator.pop(context);
+            },
+            child: Text('Cerrar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Share.shareXFiles(
+                [XFile(generatedVideoFile!.path)],
+                text: 'Mira este recuerdo 😊',
+              );
+            },
+            child: Text('Compartir'),
+          ),
+        ],
+      ),
+    );
+    controller.play();
+  } else {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'video_ready_channel',
+      'Vídeos generados',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+    );
 
-      const NotificationDetails notificationDetails = NotificationDetails(
-        android: androidDetails,
-      );
+    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
 
-      await notificationsPlugin.show(
-        0,
-        'Vídeo listo',
-        '¡Tu vídeo emocional está generado!',
-        notificationDetails,
-      );
-    }
+    await notificationsPlugin.show(
+      0,
+      'Vídeo listo',
+      '¡Tu vídeo emocional está generado!',
+      notificationDetails,
+    );
   }
+}
+
 
   @override
   void dispose() {
     _progressTimer?.cancel();
     super.dispose();
+  }
+}
+
+class FullscreenVideoPage extends StatefulWidget {
+  final File file;
+  const FullscreenVideoPage({required this.file});
+
+  @override
+  State<FullscreenVideoPage> createState() => _FullscreenVideoPageState();
+}
+
+class _FullscreenVideoPageState extends State<FullscreenVideoPage> {
+  late VideoPlayerController _controller;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(widget.file)
+      ..initialize().then((_) {
+        setState(() {
+          _isLoading = false;
+        });
+        _controller.play();
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _showOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Icon(Icons.share),
+                title: Text('Compartir video'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Share.shareXFiles([XFile(widget.file.path)], text: 'Mira este recuerdo 😊');
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Size screen = MediaQuery.of(context).size;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: Text('Reproducción completa'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.more_vert),
+            onPressed: _showOptionsMenu,
+          )
+        ],
+      ),
+      body: Center(
+        child: _isLoading
+            ? CircularProgressIndicator()
+            : FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: _controller.value.size.width,
+                  height: _controller.value.size.height,
+                  child: VideoPlayer(_controller),
+                ),
+              ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.white,
+        child: Icon(
+          _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+          color: Colors.black,
+        ),
+        onPressed: () {
+          setState(() {
+            _controller.value.isPlaying ? _controller.pause() : _controller.play();
+          });
+        },
+      ),
+    );
   }
 }

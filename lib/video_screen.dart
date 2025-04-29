@@ -31,31 +31,55 @@ class _VideoScreenState extends State<VideoScreen> {
   Timer? _progressTimer;
   File? generatedVideoFile;
 
-  Future<File> _convertImageToVideo(File imageFile) async {
-    final tempDir = await getTemporaryDirectory();
-    final nameWithoutExtension = imageFile.uri.pathSegments.last.split('.').first;
-    final videoPath = '${tempDir.path}/${nameWithoutExtension}_image.mp4';
+Future<File> _convertImageToVideo(File imageFile) async {
+  final tempDir = await getTemporaryDirectory();
+  final nameWithoutExtension = imageFile.uri.pathSegments.last.split('.').first;
+  final videoPath = '${tempDir.path}/${nameWithoutExtension}_image.mp4';
 
-    final command = [
-      '-loop', '1',
-      '-i', imageFile.path,
-      '-f', 'lavfi',
-      '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
-      '-t', '2',
-      '-r', '30',
-      '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
-      '-c:v', 'libx264',
-      '-b:v', '1500k',
-      '-pix_fmt', 'yuv420p',
-      '-shortest',
-      '-movflags', '+faststart',
-      '-y',
-      videoPath,
-    ].join(' ');
-
-    await FFmpegKit.execute(command);
-    return File(videoPath);
+  if (!await imageFile.exists()) {
+    throw Exception('Imagen no encontrada en: ${imageFile.path}');
   }
+
+  final command = [
+    '-loop', '1',
+    '-i', imageFile.path,
+    '-f', 'lavfi',
+    '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+    '-t', '2',
+    '-r', '30',
+    '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
+    '-c:v', 'mpeg4',
+    '-b:v', '1000k',
+    '-pix_fmt', 'yuv420p',
+    '-shortest',
+    '-movflags', '+faststart',
+    '-y', videoPath,
+  ];
+
+  print('🎬 Ejecutando comando FFmpeg:\n${command.join(' ')}');
+
+  final session = await FFmpegKit.execute(command.join(' '));
+
+final returnCode = await session.getReturnCode();
+final logs = await session.getAllLogsAsString();
+print('📋 FFmpeg logs:\n$logs');
+
+if (ReturnCode.isSuccess(returnCode)) {
+  final file = File(videoPath);
+  if (await file.exists()) {
+    print('✅ Imagen convertida a video: $videoPath');
+    return file;
+  } else {
+    throw Exception('El video generado no existe: $videoPath');
+  }
+} else {
+  throw Exception('Falló la conversión de imagen a video:\n$logs');
+}
+  // El executeAsync no retorna nada directamente, así que arriba capturas y manejas todo.
+  return File(videoPath); // Llegas aquí si todo fue bien
+}
+
+
 
   final FlutterLocalNotificationsPlugin notificationsPlugin = FlutterLocalNotificationsPlugin();
 

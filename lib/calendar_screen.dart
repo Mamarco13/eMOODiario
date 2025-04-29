@@ -9,6 +9,8 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
+import 'video_screen.dart';
+
 
 class CalendarScreen extends StatefulWidget {
   @override
@@ -81,7 +83,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
   void updateDominantEmotionColor() {
     final Map<Color, double> emotionSum = {};
 
-    final firstDay = DateTime(_focusedDate.year, _focusedDate.month, 1);
+    //final firstDay = DateTime(_focusedDate.year, _focusedDate.month, 1);
     final totalDays = DateTime(_focusedDate.year, _focusedDate.month + 1, 0).day;
 
     for (int day = 1; day <= totalDays; day++) {
@@ -268,20 +270,6 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
         }
       });
     }
-  },
-  onLongPressStart: (_) async {
-    if (currentMedia != null && currentMedia.isVideo) {
-      _videoController?.dispose();
-      _videoController = VideoPlayerController.file(currentMedia.file);
-      await _videoController!.initialize();
-      _videoController!.setLooping(true);
-      await _videoController!.play();
-      setState(() => _isHolding = true);
-    }
-  },
-  onLongPressEnd: (_) {
-    _videoController?.pause();
-    setState(() => _isHolding = false);
   },
   child: Padding(
     padding: const EdgeInsets.all(16.0),
@@ -543,12 +531,41 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                       ),
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 24.0, top: 12),
+                    child: Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => VideoScreen(dayData: dayData),
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.movie_creation_outlined, color: Colors.black), // Color negro del icono
+                        label: Text(
+                          "Crear Video",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,  // Fondo transparente
+                          shadowColor: Colors.transparent,      // Sin sombra
+                          padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            side: BorderSide(color: Colors.black, width: 2), // Opcional: contorno negro bonito
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
         ),
-      )
+      ),
     );
   }
 }

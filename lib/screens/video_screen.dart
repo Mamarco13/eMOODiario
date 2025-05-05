@@ -8,6 +8,8 @@ import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/emotion_day_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart'; 
+import 'package:audioplayers/audioplayers.dart';
 
 class VideoScreen extends StatefulWidget {
   final Map<DateTime, Map<String, dynamic>> dayData;
@@ -35,6 +37,24 @@ class _VideoScreenState extends State<VideoScreen> {
   double fakeProgress = 0.0;
   Timer? _progressTimer;
   File? generatedVideoFile;
+  String? selectedTrack;
+  AudioPlayer? _audioPlayer;
+
+  List<String> musicTracks = [
+    'assets/audio/EpopeyaFugaz.mp3',
+    'assets/audio/FiestaEnMovimiento.mp3',
+    'assets/audio/MelodiaSerena.mp3',
+  ];
+
+
+  Future<String> _copyAssetToTemp(String assetPath) async {
+    final byteData = await rootBundle.load(assetPath);
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/${assetPath.split('/').last}');
+    await file.writeAsBytes(byteData.buffer.asUint8List());
+    return file.path;
+  }
+
 
   Future<File> _normalizeVideo(File inputFile) async {
     final tempDir = await getTemporaryDirectory();
@@ -285,6 +305,30 @@ Future<void> cleanOrphanFiles(Map<DateTime, Map<String, dynamic>> dayData) async
               },
               title: Text('Orden aleatorio'),
             ),
+            SizedBox(height: 24),
+            Text('Seleccionar música de fondo', style: Theme.of(context).textTheme.titleMedium),
+            SizedBox(height: 8),
+            ...musicTracks.map((trackPath) {
+              final name = trackPath.split('/').last.replaceAll('.mp3', '');
+              return RadioListTile<String>(
+                title: Text(name),
+                value: trackPath,
+                groupValue: selectedTrack,
+                onChanged: isGenerating ? null : (val) {
+                  setState(() {
+                    selectedTrack = val;
+                  });
+                },
+                secondary: IconButton(
+                  icon: Icon(Icons.play_arrow),
+                  onPressed: isGenerating ? null : () async {
+                    _audioPlayer?.stop();
+                    _audioPlayer = AudioPlayer();
+                    await _audioPlayer!.play(AssetSource(trackPath.replaceFirst('assets/', '')));
+                  },
+                ),
+              );
+            }).toList(),
             SizedBox(height: 32),
             if (isGenerating) ...[
               Text('Generando video...', style: Theme.of(context).textTheme.titleMedium),
@@ -362,8 +406,19 @@ void _startGeneratingVideo() async {
   await inputFile.writeAsString(inputContent);
   print('📄 input.txt:\n$inputContent');
 
+  String? audioInputPath;
+  if (selectedTrack != null) {
+    audioInputPath = await _copyAssetToTemp(selectedTrack!);
+  }
+
   // Comando robusto con demuxer
-  final ffmpegCommand = "-f concat -safe 0 -i ${inputFile.path} -c:v mpeg4 -b:v 1000k -c:a aac -b:a 128k -pix_fmt yuv420p -t $maxDurationSeconds -y ${videoOutput.path}";
+  final ffmpegCommand = audioInputPath != null
+  ? "-f concat -safe 0 -i ${inputFile.path} -stream_loop -1 -i $audioInputPath "
+    "-c:v mpeg4 -b:v 1000k -c:a aac -b:a 128k -pix_fmt yuv420p "
+    "-shortest -map 0:v:0 -map 1:a:0 -t $maxDurationSeconds -y ${videoOutput.path}"
+  : "-f concat -safe 0 -i ${inputFile.path} "
+    "-c:v mpeg4 -b:v 1000k -pix_fmt yuv420p -t $maxDurationSeconds -y ${videoOutput.path}";
+
 
   await FFmpegKit.executeAsync(ffmpegCommand, (session) async {
     final logs = await session.getAllLogsAsString();
@@ -525,6 +580,7 @@ void _showVideoReadyDialog() async {
   void dispose() {
     _progressTimer?.cancel();
     super.dispose();
+    _audioPlayer?.dispose();
   }
 }
 

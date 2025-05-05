@@ -32,6 +32,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
 
 
+
   Map<DateTime, Map<String, dynamic>> dayData = {};
 
   @override
@@ -64,13 +65,13 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     setState(() {
       dayData = loadedData;
       final today = DateTime.now();
-      setState(() {
-        _selectedDay = today.day;
-        _selectedPreviewDay = today.day;
-        _selectedDayReference = today;
-        _focusedDate = DateTime(today.year, today.month); // centramos el calendario en este mes también
-      });
+      _selectedDay = today.day;
+      _selectedPreviewDay = today.day;
+      _selectedDayReference = today;
+      _focusedDate = DateTime(today.year, today.month);
+      previousMonth = today.month;
     });
+    updateDominantEmotionColor();
   }
 
   @override
@@ -494,6 +495,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                               _focusedDate = newDate;
                             });
                             updateDominantEmotionColor();
+
                           },
                         ),
                         Text(
@@ -566,6 +568,38 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
           ],
         ),
       ),
+      floatingActionButton: (_selectedDayReference != null &&
+        (_selectedDayReference!.month != _focusedDate.month ||
+         _selectedDayReference!.year != _focusedDate!.year))
+    ? Align(
+        alignment: Alignment.bottomRight,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 6.0, top: 12.0, right: 12.0),
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _focusedDate = DateTime(
+                  _selectedDayReference!.year,
+                  _selectedDayReference!.month,
+                );
+                previousMonth = _focusedDate.month;
+              });
+              updateDominantEmotionColor();
+            },
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black, width: 2),
+                color: Colors.transparent,
+              ),
+              child: Icon(Icons.calendar_today, color: Colors.black),
+            ),
+          ),
+        ),
+      )
+    : null,
     );
   }
 }

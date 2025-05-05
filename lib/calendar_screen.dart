@@ -522,14 +522,19 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                   ),
                   // Ahora el calendario
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: GridView.count(
-                        physics: NeverScrollableScrollPhysics(), // 👈 Evita que puedas scrollear
-                        crossAxisCount: 7,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        children: dayWidgets,
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: 7 / 5.5, // 7 columnas y 6 filas
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: GridView.count(
+                            physics: NeverScrollableScrollPhysics(),
+                            crossAxisCount: 7,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            children: dayWidgets,
+                          ),
+                        ),
                       ),
                     ),
                   ),

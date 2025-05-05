@@ -46,6 +46,29 @@ class _VideoScreenState extends State<VideoScreen> {
     'assets/audio/MelodiaSerena.mp3',
   ];
 
+  Future<int> _calcularDuracionTotal(List<File> mediaFiles) async {
+    int totalSeconds = 0;
+
+    for (final file in mediaFiles) {
+      final isVideo = file.path.toLowerCase().endsWith('.mp4');
+      if (isVideo) {
+        final info = await FFmpegKit.executeWithArguments(['-i', file.path]);
+        final logs = await info.getAllLogsAsString();
+        final match = RegExp(r'Duration: (\d+):(\d+):(\d+.\d+)').firstMatch(logs.toString());
+        if (match != null) {
+          final hours = int.parse(match.group(1)!);
+          final minutes = int.parse(match.group(2)!);
+          final seconds = double.parse(match.group(3)!);
+          totalSeconds += (hours * 3600 + minutes * 60 + seconds).round();
+        }
+      } else {
+        totalSeconds += 2; // 2 segundos por imagen
+      }
+    }
+
+    return totalSeconds;
+  }
+
 
   Future<String> _copyAssetToTemp(String assetPath) async {
     final byteData = await rootBundle.load(assetPath);
@@ -368,6 +391,7 @@ Future<void> cleanOrphanFiles(Map<DateTime, Map<String, dynamic>> dayData) async
 
 
 void _startGeneratingVideo() async {
+  _audioPlayer?.stop();
   setState(() {
     isGenerating = true;
     fakeProgress = 0.0;
@@ -423,11 +447,14 @@ void _startGeneratingVideo() async {
     audioInputPath = await _copyAssetToTemp(selectedTrack!);
   }
 
+  final realDuration = await _calcularDuracionTotal(finalVideos);
+  final finalDuration = realDuration < maxDurationSeconds ? realDuration : maxDurationSeconds;
+
   // Comando robusto con demuxer
   final ffmpegCommand = audioInputPath != null
   ? "-f concat -safe 0 -i ${inputFile.path} -stream_loop -1 -i $audioInputPath "
     "-c:v mpeg4 -b:v 1000k -c:a aac -b:a 128k -pix_fmt yuv420p "
-    "-map 0:v:0 -map 1:a:0 -t $maxDurationSeconds -movflags +faststart -y ${videoOutput.path}"
+    "-map 0:v:0 -map 1:a:0 -t $finalDuration -movflags +faststart -y ${videoOutput.path}"
   : "-f concat -safe 0 -i ${inputFile.path} "
     "-c:v mpeg4 -b:v 1000k -pix_fmt yuv420p -t $maxDurationSeconds -movflags +faststart -y ${videoOutput.path}";
 

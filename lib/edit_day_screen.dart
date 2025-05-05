@@ -3,7 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 //Colores mejorados
-const Color softYellow = Colors.yellow;// Alegría - amarillo dorado
+const Color softYellow = Color(0xFFF4C430);// Alegría - amarillo dorado
 const Color softRed = Color.fromARGB(255, 253, 27, 27);    // Ira - rojo fuerte
 const Color softBlue = Colors.blueAccent;   // Tristeza - azul vivo
 const Color softPink = Color.fromARGB(255, 250, 127, 182);   // Enamoramiento - rosa intenso

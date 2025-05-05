@@ -469,7 +469,7 @@ void _startGeneratingVideo() async {
 
   bool _colorMatchesEmotion(Color color) {
     final Map<String, Color> emotionColorMap = {
-      'Alegría': Colors.yellow,
+      'Alegría': Color(0xFFF4C430),
       'Ira': Color.fromARGB(255, 253, 27, 27),
       'Tristeza': Colors.blueAccent,
       'Enamoramiento': Color.fromARGB(255, 250, 127, 182),

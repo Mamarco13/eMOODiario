@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
+import 'package:video_thumbnail/video_thumbnail.dart';
 import 'dart:io';
 
 //Colores mejorados
@@ -220,13 +222,47 @@ class _EditDayScreenState extends State<EditDayScreen> {
                                   children: [
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
-                                      child: Image.file(
-                                        file.file,
-                                        width: 100,
-                                        height: 100,
-                                        fit: BoxFit.cover,
-                                      ),
+                                      child: file.isVideo
+                                          ? FutureBuilder<String?>(
+                                              future: VideoThumbnail.thumbnailFile(
+                                                video: file.file.path,
+                                                imageFormat: ImageFormat.PNG,
+                                                maxWidth: 100,
+                                                quality: 75,
+                                              ),
+                                              builder: (context, snapshot) {
+                                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                                  return Container(
+                                                    width: 100,
+                                                    height: 100,
+                                                    color: Colors.grey.shade300,
+                                                    child: Center(child: CircularProgressIndicator()),
+                                                  );
+                                                } else if (snapshot.hasData && snapshot.data != null) {
+                                                  return Image.file(
+                                                    File(snapshot.data!),
+                                                    width: 100,
+                                                    height: 100,
+                                                    fit: BoxFit.cover,
+                                                  );
+                                                } else {
+                                                  return Container(
+                                                    width: 100,
+                                                    height: 100,
+                                                    color: Colors.grey,
+                                                    child: Icon(Icons.videocam),
+                                                  );
+                                                }
+                                              },
+                                            )
+                                          : Image.file(
+                                              file.file,
+                                              width: 100,
+                                              height: 100,
+                                              fit: BoxFit.cover,
+                                            ),
                                     ),
+
                                     if (file.isVideo)
                                       Positioned(
                                         bottom: 4,

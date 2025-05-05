@@ -1,139 +1,13 @@
-// Reemplazo completo del archivo VideoScreen con concatenación robusta (sin guardar en galería)
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter/return_code.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
-
-
+import '../widgets/emotion_day_picker.dart';
 import 'package:intl/intl.dart';
-
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-
-Future<List<DateTime>?> showEmotionDayPicker(
-  BuildContext context,
-  Map<DateTime, Map<String, dynamic>> dayData,
-) async {
-  final now = DateTime.now();
-  DateTime focusedMonth = DateTime(now.year, now.month);
-  final Set<DateTime> selected = {};
-
-  return await showDialog<List<DateTime>>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Selecciona días con emoción'),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            final totalDays = DateTime(focusedMonth.year, focusedMonth.month + 1, 0).day;
-            final firstWeekday = DateTime(focusedMonth.year, focusedMonth.month, 1).weekday % 7;
-            final List<Widget> dayWidgets = [];
-
-            // Espacios vacíos antes del primer día
-            for (int i = 0; i < firstWeekday; i++) {
-              dayWidgets.add(Container());
-            }
-
-            for (int day = 1; day <= totalDays; day++) {
-              final date = DateTime(focusedMonth.year, focusedMonth.month, day);
-              final media = dayData[date]?['media'] ?? [];
-              final color = media.isNotEmpty ? media[0].color1 : Colors.grey.shade300;
-              final isSelected = selected.contains(date);
-
-              dayWidgets.add(
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (isSelected) selected.remove(date);
-                      else selected.add(date);
-                    });
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.7),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected ? Colors.black : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$day',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            return SizedBox(
-              height: 400,
-              width: double.maxFinite,
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.chevron_left),
-                        onPressed: () {
-                          setState(() {
-                            focusedMonth = DateTime(focusedMonth.year, focusedMonth.month - 1);
-                          });
-                        },
-                      ),
-                      Text(
-                        DateFormat('MMMM yyyy', 'es_ES').format(focusedMonth).toUpperCase(),
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.chevron_right),
-                        onPressed: () {
-                          setState(() {
-                            focusedMonth = DateTime(focusedMonth.year, focusedMonth.month + 1);
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 7,
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      children: dayWidgets,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, null), child: Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, selected.toList()..sort((a, b) => a.compareTo(b))),
-            child: Text('Aceptar'),
-          ),
-        ],
-      );
-    },
-  );
-}
-
 
 class VideoScreen extends StatefulWidget {
   final Map<DateTime, Map<String, dynamic>> dayData;
@@ -284,27 +158,6 @@ Future<void> cleanOrphanFiles(Map<DateTime, Map<String, dynamic>> dayData) async
     }
   }
 }
-
-
-  final FlutterLocalNotificationsPlugin notificationsPlugin = FlutterLocalNotificationsPlugin();
-
-  @override
-  void initState() {
-    super.initState();
-    _initNotifications();
-    cleanOrphanFiles(widget.dayData);
-  }
-
-  Future<void> _initNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
-
-    await notificationsPlugin.initialize(initializationSettings);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -569,17 +422,7 @@ void _startGeneratingVideo() async {
           selected.day == entry.key.day
         )
       ).toList();
-
-    } else if (rangeOption == 'Seleccionar días concretos') {
-      filteredDays = allDays.where((entry) => 
-        selectedDays.any((selected) =>
-          selected.year == entry.key.year &&
-          selected.month == entry.key.month &&
-          selected.day == entry.key.day
-        )
-      ).toList();
     }
-
     if (selectedEmotions.isNotEmpty) {
       filteredDays = filteredDays.where((entry) {
         final mediaList = entry.value['media'] as List<dynamic>? ?? [];
@@ -674,24 +517,7 @@ void _showVideoReadyDialog() async {
       ),
     );
     controller.play();
-  } else {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'video_ready_channel',
-      'Vídeos generados',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-    );
-
-    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
-
-    await notificationsPlugin.show(
-      0,
-      'Vídeo listo',
-      '¡Tu vídeo emocional está generado!',
-      notificationDetails,
-    );
-  }
+  } 
 }
 
 

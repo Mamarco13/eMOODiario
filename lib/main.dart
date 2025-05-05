@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'calendar_screen.dart';
+import 'screens/calendar_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {

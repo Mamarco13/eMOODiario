@@ -2,15 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import '../models/media_file.dart';
+import '../constants/emotions.dart';
 import 'dart:io';
-
-//Colores mejorados
-const Color softYellow = Color(0xFFF4C430);// Alegría - amarillo dorado
-const Color softRed = Color.fromARGB(255, 253, 27, 27);    // Ira - rojo fuerte
-const Color softBlue = Colors.blueAccent;   // Tristeza - azul vivo
-const Color softPink = Color.fromARGB(255, 250, 127, 182);   // Enamoramiento - rosa intenso
-const Color softOrange = Color.fromARGB(255, 255, 168, 38); // Ansiedad - naranja mandarina
-const Color softPurple = Colors.purple; // Miedo - morado fuerte
 
 class EditDayScreen extends StatefulWidget {
   final int day;
@@ -39,25 +32,6 @@ class _EditDayScreenState extends State<EditDayScreen> {
   final phraseController = TextEditingController();
   final picker = ImagePicker();
   final maxMediaCount = 3;
-
-  final List<Color> availableColors = [
-    softYellow,
-    softRed,
-    softBlue,
-    softPink,
-    softOrange,
-    softPurple,
-  ];
-
-  final Map<Color, String> colorToEmotion = {
-    softYellow: 'Alegría',
-    softRed: 'Ira',
-    softBlue: 'Tristeza',
-    softPink: 'Enamoramiento',
-    softOrange: 'Ansiedad',
-    softPurple: 'Miedo',
-};
-
 
   @override
   void dispose() {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/media_file.dart';
 
 Map<Color, double> calcularColoresDelDia(DateTime date, Map<DateTime, Map<String, dynamic>> dayData) {
   final mediaList = dayData[date]?['media'] ?? [];

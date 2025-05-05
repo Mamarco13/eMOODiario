@@ -10,6 +10,8 @@ import '../widgets/emotion_day_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart'; 
 import 'package:audioplayers/audioplayers.dart';
+import 'dart:math';
+
 
 class VideoScreen extends StatefulWidget {
   final Map<DateTime, Map<String, dynamic>> dayData;
@@ -39,6 +41,16 @@ class _VideoScreenState extends State<VideoScreen> {
   File? generatedVideoFile;
   String? selectedTrack;
   AudioPlayer? _audioPlayer;
+  String fraseActual = "Generando magia..."; // frase inicial
+
+  final List<String> generacionFrases = [
+    "Buscando emociones perdidas...",
+    "Alineando tus recuerdos 🎞️",
+    "Poniendo música al corazón...",
+    "Rebobinando sonrisas 😊",
+    "Exportando momentos mágicos ✨",
+    "Subiendo el volumen a tu historia...",
+  ];
 
   List<String> musicTracks = [
     'assets/audio/EpopeyaFugaz.mp3',
@@ -333,18 +345,25 @@ Future<void> cleanOrphanFiles(Map<DateTime, Map<String, dynamic>> dayData) async
             SizedBox(height: 8),
             ...musicTracks.map((trackPath) {
               final name = trackPath.split('/').last.replaceAll('.mp3', '');
-              return RadioListTile<String>(
-                title: Text(name),
-                value: trackPath,
-                groupValue: selectedTrack,
-                onChanged: isGenerating ? null : (val) {
-                  setState(() {
-                    selectedTrack = val;
-                  });
-                },
-                secondary: Row(
-                  mainAxisSize: MainAxisSize.min,
+              return Container(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Row(
                   children: [
+                    Radio<String>(
+                      value: trackPath,
+                      groupValue: selectedTrack,
+                      onChanged: isGenerating ? null : (val) {
+                        setState(() {
+                          selectedTrack = val;
+                        });
+                      },
+                    ),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
                     IconButton(
                       icon: Icon(Icons.play_arrow),
                       onPressed: isGenerating ? null : () async {
@@ -355,20 +374,24 @@ Future<void> cleanOrphanFiles(Map<DateTime, Map<String, dynamic>> dayData) async
                     ),
                     IconButton(
                       icon: Icon(Icons.stop),
-                      onPressed: isGenerating ? null : () async {
-                        await _audioPlayer?.stop();
+                      onPressed: isGenerating ? null : () {
+                        _audioPlayer?.stop();
                       },
                     ),
                   ],
                 ),
-
               );
             }).toList(),
             SizedBox(height: 32),
             if (isGenerating) ...[
-              Text('Generando video...', style: Theme.of(context).textTheme.titleMedium),
-              SizedBox(height: 16),
-              LinearProgressIndicator(value: fakeProgress),
+              SizedBox(height: 24),
+              Center(child: CircularProgressIndicator()),
+              SizedBox(height: 24),
+              Text(
+                fraseActual,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.grey[700]),
+              ),
             ] else ...[
               ElevatedButton.icon(
                 onPressed: _startGeneratingVideo,
@@ -482,10 +505,11 @@ void _startGeneratingVideo() async {
 
 
   void _startFakeProgress() {
-    _progressTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+    final random = Random();
+    _progressTimer = Timer.periodic(Duration(seconds: 2), (timer) {
+      if (!mounted) return;
       setState(() {
-        fakeProgress += 0.05;
-        if (fakeProgress > 1.0) fakeProgress = 1.0;
+        fraseActual = generacionFrases[random.nextInt(generacionFrases.length)];
       });
     });
   }

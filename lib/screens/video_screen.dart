@@ -319,14 +319,26 @@ Future<void> cleanOrphanFiles(Map<DateTime, Map<String, dynamic>> dayData) async
                     selectedTrack = val;
                   });
                 },
-                secondary: IconButton(
-                  icon: Icon(Icons.play_arrow),
-                  onPressed: isGenerating ? null : () async {
-                    _audioPlayer?.stop();
-                    _audioPlayer = AudioPlayer();
-                    await _audioPlayer!.play(AssetSource(trackPath.replaceFirst('assets/', '')));
-                  },
+                secondary: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.play_arrow),
+                      onPressed: isGenerating ? null : () async {
+                        _audioPlayer?.stop();
+                        _audioPlayer = AudioPlayer();
+                        await _audioPlayer!.play(AssetSource(trackPath.replaceFirst('assets/', '')));
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.stop),
+                      onPressed: isGenerating ? null : () async {
+                        await _audioPlayer?.stop();
+                      },
+                    ),
+                  ],
                 ),
+
               );
             }).toList(),
             SizedBox(height: 32),
@@ -415,10 +427,9 @@ void _startGeneratingVideo() async {
   final ffmpegCommand = audioInputPath != null
   ? "-f concat -safe 0 -i ${inputFile.path} -stream_loop -1 -i $audioInputPath "
     "-c:v mpeg4 -b:v 1000k -c:a aac -b:a 128k -pix_fmt yuv420p "
-    "-shortest -map 0:v:0 -map 1:a:0 -t $maxDurationSeconds -y ${videoOutput.path}"
+    "-map 0:v:0 -map 1:a:0 -t $maxDurationSeconds -movflags +faststart -y ${videoOutput.path}"
   : "-f concat -safe 0 -i ${inputFile.path} "
-    "-c:v mpeg4 -b:v 1000k -pix_fmt yuv420p -t $maxDurationSeconds -y ${videoOutput.path}";
-
+    "-c:v mpeg4 -b:v 1000k -pix_fmt yuv420p -t $maxDurationSeconds -movflags +faststart -y ${videoOutput.path}";
 
   await FFmpegKit.executeAsync(ffmpegCommand, (session) async {
     final logs = await session.getAllLogsAsString();

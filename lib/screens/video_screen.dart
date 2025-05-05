@@ -11,7 +11,10 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart'; 
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:math';
-
+import '../constants/video_screen_resources.dart';
+import '../utils/ffmpeg_helpers.dart';
+import '../widgets/music_selector.dart';
+import '../widgets/full_screen_video_page.dart';
 
 class VideoScreen extends StatefulWidget {
   final Map<DateTime, Map<String, dynamic>> dayData;
@@ -43,82 +46,10 @@ class _VideoScreenState extends State<VideoScreen> {
   AudioPlayer? _audioPlayer;
   String fraseActual = "Generando magia..."; // frase inicial
 
-  final List<String> generacionFrases = [
-    "Buscando emociones perdidas...",
-    "Alineando tus recuerdos 🎞️",
-    "Poniendo música al corazón...",
-    "Rebobinando sonrisas 😊",
-    "Exportando momentos mágicos ✨",
-    "Subiendo el volumen a tu historia...",
-  ];
-
-  List<String> musicTracks = [
-    'assets/audio/EpopeyaFugaz.mp3',
-    'assets/audio/FiestaEnMovimiento.mp3',
-    'assets/audio/MelodiaSerena.mp3',
-  ];
-
-  Future<int> _calcularDuracionTotal(List<File> mediaFiles) async {
-    int totalSeconds = 0;
-
-    for (final file in mediaFiles) {
-      final isVideo = file.path.toLowerCase().endsWith('.mp4');
-      if (isVideo) {
-        final info = await FFmpegKit.executeWithArguments(['-i', file.path]);
-        final logs = await info.getAllLogsAsString();
-        final match = RegExp(r'Duration: (\d+):(\d+):(\d+.\d+)').firstMatch(logs.toString());
-        if (match != null) {
-          final hours = int.parse(match.group(1)!);
-          final minutes = int.parse(match.group(2)!);
-          final seconds = double.parse(match.group(3)!);
-          totalSeconds += (hours * 3600 + minutes * 60 + seconds).round();
-        }
-      } else {
-        totalSeconds += 2; // 2 segundos por imagen
-      }
-    }
-
-    return totalSeconds;
-  }
+  
 
 
-  Future<String> _copyAssetToTemp(String assetPath) async {
-    final byteData = await rootBundle.load(assetPath);
-    final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/${assetPath.split('/').last}');
-    await file.writeAsBytes(byteData.buffer.asUint8List());
-    return file.path;
-  }
-
-
-  Future<File> _normalizeVideo(File inputFile) async {
-    final tempDir = await getTemporaryDirectory();
-    final outputFile = File('${tempDir.path}/${inputFile.uri.pathSegments.last}_norm.mp4');
-
-    final command = [
-      '-i', inputFile.path,
-      '-r', '30',
-      '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
-      '-c:v', 'mpeg4',
-      '-b:v', '1000k',
-      '-pix_fmt', 'yuv420p',
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      '-y', outputFile.path,
-    ];
-
-    print('🎞️ Normalizando video original:\n${command.join(' ')}');
-    final session = await FFmpegKit.execute(command.join(' '));
-    final returnCode = await session.getReturnCode();
-    final logs = await session.getAllLogsAsString();
-
-    if (ReturnCode.isSuccess(returnCode)) {
-      return outputFile;
-    } else {
-      print('❌ Error al normalizar video:\n$logs');
-      throw Exception('Error al normalizar video');
-    }
-  }
+  
 
 
 void _openCalendarDialog() async {
@@ -130,51 +61,7 @@ void _openCalendarDialog() async {
   }
 }
 
-Future<File> _convertImageToVideo(File imageFile) async {
-  final tempDir = await getTemporaryDirectory();
-  final nameWithoutExtension = imageFile.uri.pathSegments.last.split('.').first;
-  final videoPath = '${tempDir.path}/${nameWithoutExtension}_image.mp4';
 
-  if (!await imageFile.exists()) {
-    throw Exception('Imagen no encontrada en: ${imageFile.path}');
-  }
-
-  final command = [
-    '-loop', '1',
-    '-i', imageFile.path,
-    '-f', 'lavfi',
-    '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
-    '-t', '2',
-    '-r', '30',
-    '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
-    '-c:v', 'mpeg4',
-    '-b:v', '1000k',
-    '-pix_fmt', 'yuv420p',
-    '-shortest',
-    '-movflags', '+faststart',
-    '-y', videoPath,
-  ];
-
-  print('🎬 Ejecutando comando FFmpeg:\n${command.join(' ')}');
-
-  final session = await FFmpegKit.execute(command.join(' '));
-
-final returnCode = await session.getReturnCode();
-final logs = await session.getAllLogsAsString();
-print('📋 FFmpeg logs:\n$logs');
-
-if (ReturnCode.isSuccess(returnCode)) {
-  final file = File(videoPath);
-  if (await file.exists()) {
-    print('✅ Imagen convertida a video: $videoPath');
-    return file;
-  } else {
-    throw Exception('El video generado no existe: $videoPath');
-  }
-} else {
-  throw Exception('Falló la conversión de imagen a video:\n$logs');
-}
-}
 
 
   Future<List<File>> getAllMediaFilesInStorage() async {
@@ -343,45 +230,17 @@ Future<void> cleanOrphanFiles(Map<DateTime, Map<String, dynamic>> dayData) async
             SizedBox(height: 24),
             Text('Seleccionar música de fondo', style: Theme.of(context).textTheme.titleMedium),
             SizedBox(height: 8),
-            ...musicTracks.map((trackPath) {
-              final name = trackPath.split('/').last.replaceAll('.mp3', '');
-              return Container(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Radio<String>(
-                      value: trackPath,
-                      groupValue: selectedTrack,
-                      onChanged: isGenerating ? null : (val) {
-                        setState(() {
-                          selectedTrack = val;
-                        });
-                      },
-                    ),
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.play_arrow),
-                      onPressed: isGenerating ? null : () async {
-                        _audioPlayer?.stop();
-                        _audioPlayer = AudioPlayer();
-                        await _audioPlayer!.play(AssetSource(trackPath.replaceFirst('assets/', '')));
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.stop),
-                      onPressed: isGenerating ? null : () {
-                        _audioPlayer?.stop();
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+            MusicSelector(
+              tracks: musicTracks,
+              selectedTrack: selectedTrack,
+              isGenerating: isGenerating,
+              audioPlayer: _audioPlayer,
+              onSelected: (val) {
+                setState(() {
+                  selectedTrack = val;
+                });
+              },
+            ),
             SizedBox(height: 32),
             if (isGenerating) ...[
               SizedBox(height: 24),
@@ -438,10 +297,10 @@ void _startGeneratingVideo() async {
 
   for (final file in mediaFiles) {
     if (file.path.toLowerCase().endsWith('.mp4')) {
-      final normalized = await _normalizeVideo(file);
+      final normalized = await FfmpegHelpers.normalizeVideo(file);
       finalVideos.add(normalized);
     } else if (file.path.toLowerCase().endsWith('.jpg') || file.path.toLowerCase().endsWith('.jpeg') || file.path.toLowerCase().endsWith('.png')) {
-      final videoFromImage = await _convertImageToVideo(file);
+      final videoFromImage = await FfmpegHelpers.convertImageToVideo(file);
       finalVideos.add(videoFromImage);
     }
   }
@@ -467,10 +326,10 @@ void _startGeneratingVideo() async {
 
   String? audioInputPath;
   if (selectedTrack != null) {
-    audioInputPath = await _copyAssetToTemp(selectedTrack!);
+    audioInputPath = await FfmpegHelpers.copyAssetToTemp(selectedTrack!);
   }
 
-  final realDuration = await _calcularDuracionTotal(finalVideos);
+  final realDuration = await FfmpegHelpers.calcularDuracionTotal(finalVideos);
   final finalDuration = realDuration < maxDurationSeconds ? realDuration : maxDurationSeconds;
 
   // Comando robusto con demuxer
@@ -646,97 +505,3 @@ void _showVideoReadyDialog() async {
   }
 }
 
-class FullscreenVideoPage extends StatefulWidget {
-  final File file;
-  const FullscreenVideoPage({required this.file});
-
-  @override
-  State<FullscreenVideoPage> createState() => _FullscreenVideoPageState();
-}
-
-class _FullscreenVideoPageState extends State<FullscreenVideoPage> {
-  late VideoPlayerController _controller;
-  bool _isLoading = true;
-
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.file(widget.file)
-      ..initialize().then((_) {
-        setState(() {
-          _isLoading = false;
-        });
-        _controller.play();
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _showOptionsMenu() {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: Icon(Icons.share),
-                title: Text('Compartir video'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Share.shareXFiles([XFile(widget.file.path)], text: 'Mira este recuerdo 😊');
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text('Reproducción completa'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.more_vert),
-            onPressed: _showOptionsMenu,
-          )
-        ],
-      ),
-      body: Center(
-        child: _isLoading
-            ? CircularProgressIndicator()
-            : FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: _controller.value.size.width,
-                  height: _controller.value.size.height,
-                  child: VideoPlayer(_controller),
-                ),
-              ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.white,
-        child: Icon(
-          _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-          color: Colors.black,
-        ),
-        onPressed: () {
-          setState(() {
-            _controller.value.isPlaying ? _controller.pause() : _controller.play();
-          });
-        },
-      ),
-    );
-  }
-}

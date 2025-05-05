@@ -541,7 +541,10 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => VideoScreen(dayData: dayData),
+                              builder: (context) => VideoScreen(
+                                dayData: dayData,
+                                selectedMonth: DateTime(_focusedDate.year, _focusedDate.month),
+                              ),
                             ),
                           );
                         },

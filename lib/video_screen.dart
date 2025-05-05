@@ -13,8 +13,13 @@ import 'package:share_plus/share_plus.dart';
 
 class VideoScreen extends StatefulWidget {
   final Map<DateTime, Map<String, dynamic>> dayData;
+  final DateTime selectedMonth; // 👈 agregar esto
 
-  const VideoScreen({Key? key, required this.dayData}) : super(key: key);
+  const VideoScreen({
+    Key? key,
+    required this.dayData,
+    required this.selectedMonth, // 👈 también aquí
+  }) : super(key: key);
 
   @override
   _VideoScreenState createState() => _VideoScreenState();
@@ -420,10 +425,19 @@ void _startGeneratingVideo() async {
     List<MapEntry<DateTime, Map<String, dynamic>>> filteredDays = [];
 
     if (rangeOption == 'Mes completo') {
-      final now = DateTime.now();
+      final targetMonth = widget.selectedMonth;
       filteredDays = allDays.where((entry) =>
-        entry.key.month == now.month && entry.key.year == now.year
+        entry.key.month == targetMonth.month && entry.key.year == targetMonth.year
       ).toList();
+    } else if (rangeOption == 'Seleccionar días concretos') {
+      filteredDays = allDays.where((entry) => 
+        selectedDays.any((selected) =>
+          selected.year == entry.key.year &&
+          selected.month == entry.key.month &&
+          selected.day == entry.key.day
+        )
+      ).toList();
+
     } else if (rangeOption == 'Seleccionar días concretos') {
       filteredDays = allDays.where((entry) => 
         selectedDays.any((selected) =>

@@ -30,9 +30,23 @@ Si, sin embargo, lo que hacemos es dar un doble toque al preview accederemos a u
 
 ### Edit_day_screen✍🏻
 
-Esta es la pantalla donde el usuario plasma cómo se sintió un día específico. Se puede escribir un título, una frase emocional, y añadir hasta 3 archivos multimedia (imágenes o videos).
+Esta es la pantalla donde el usuario plasma cómo se sintió un día específico. Se puede escribir un título, una frase del día, y añadir hasta 3 archivos multimedia (imágenes o videos).
 
-Cada archivo puede asociarse con una o dos emociones gracias a una paleta de colores emocional. El usuario puede incluso ajustar con un slider personalizado el porcentaje de una emoción respecto a la otra, generando un equilibrio visual que será usado en el calendario y en los videos.
+Cada archivo puede asociarse con una o dos emociones gracias a una paleta de colores emocional. El usuario puede incluso ajustar con un slider personalizado el porcentaje de una emoción respecto a la otra, generando un equilibrio visual que será usado en el calendario y como filtro en los videos.
+
+#### 🎨 Paleta de emociones y colores
+
+La paleta de colores y las emociones asociadas son:
+
+<ul>
+  <li><span style="color:#F4C430;">🟡 <strong>Alegría</strong></span> – Amarillo dorado</li>
+  <li><span style="color:#FD1B1B;">🔴 <strong>Ira</strong></span> – Rojo fuerte</li>
+  <li><span style="color:#448AFF;">🔵 <strong>Tristeza</strong></span> – Azul vivo</li>
+  <li><span style="color:#FA7FB6;">💗 <strong>Enamoramiento</strong></span> – Rosa intenso</li>
+  <li><span style="color:#FFA826;">🟠 <strong>Ansiedad</strong></span> – Naranja mandarina</li>
+  <li><span style="color:purple;">🟣 <strong>Miedo</strong></span> – Morado fuerte</li>
+</ul>
+
 
 📸 Sugerencias de capturas:
 

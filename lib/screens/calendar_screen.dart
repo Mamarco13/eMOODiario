@@ -9,7 +9,7 @@ import '../models/media_file.dart';
 import '../utils/emotion_utils.dart';
 import '../widgets/emotion_preview_card.dart';
 import '../widgets/emotion_calendar.dart';
-
+import '../widgets/faq_help_dialog.dart'; 
 
 
 class CalendarScreen extends StatefulWidget {
@@ -141,10 +141,14 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
             );
           },
           child: AppBar(
-            key: ValueKey(dominantEmotionColor.value), // 👈 clave para que AnimatedSwitcher detecte el cambio
+            key: ValueKey(dominantEmotionColor.value),
             backgroundColor: dominantEmotionColor.withOpacity(0.9),
             elevation: 0,
             centerTitle: true,
+            leading: IconButton(
+              icon: Icon(Icons.help_outline, color: Colors.black),
+              onPressed: () => showFAQDialog(context), // << Asegúrate de tener este método importado
+            ),
             title: Image.asset(
               'assets/EMOODIARIO.png',
               height: 65,

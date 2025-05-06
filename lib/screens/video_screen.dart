@@ -46,10 +46,11 @@ class _VideoScreenState extends State<VideoScreen> {
   AudioPlayer? _audioPlayer;
   String fraseActual = "Generando magia..."; // frase inicial
 
-  
-
-
-  
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer();
+  }
 
 
 void _openCalendarDialog() async {

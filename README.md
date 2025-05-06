@@ -105,4 +105,14 @@ Cuando el usuario quiere ver a detalle sus recuerdos visuales de un día, esta p
 
   * Ver título y frase emocional del día.
 
+<p align="center">
+  <img src="assets/readme_images/FS1.jpg" 
+       alt="Captura de pantalla de la full_screen" 
+       width="200" />
+  <img src="assets/readme_images/FS2.jpg" 
+       alt="Captura de pantalla de la full_screen" 
+       width="200" />
 
+<p align="center"><em>Captura de funcionamiento de la full screen page</em></p>
+
+Esto debería ser una guía suficientemente completa para que sepas usar **eMOODiario**. ¡Siente, expresa y disfruta!

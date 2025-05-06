@@ -47,43 +47,30 @@ La paleta de colores y las emociones asociadas son:
   <li><span style="color:purple;">🟣 <strong>Miedo</strong></span> – Morado fuerte</li>
 </ul>
 
-
-📸 Sugerencias de capturas:
-
-Vista de un día editado con imágenes y selección de colores.
-
-Slider de emociones activo entre dos colores.
-
-Pantalla con galería de multimedia y botones de agregar.
-
-<p align="center"> <img src="assets/images/README_Images/EditDayScreen1.jpg" width="200"/> <img src="assets/images/README_Images/EditDayScreenSlider.jpg" width="200"/> </p> <p align="center"><em>Captura de pantalla de edición emocional de un día</em></p>
+<p align="center">
+  <img src="assets/readme_images/ES.jpg" 
+       alt="Captura de pantalla de la calendar_screen" 
+       width="200" />
+<p align="center"><em>Captura de la edit_screen</em></p>
 
 ### Video_screen📹
-Una de las funcionalidades estrella de la app. Desde esta pantalla se puede crear un video recuerdo personalizado. El usuario puede:
+La funcionalidad estrella de la app. Desde esta pantalla se puede crear un video recuerdo personalizado. El usuario puede:
 
-Elegir si quiere usar todo el mes o días concretos (con calendario visual).
+Elegir si quiere usar todo el mes o días concretos (con un calendario visual que indica la emoción principal del día para refrescar la memoria del usuario).
 
 Filtrar por emociones (solo mostrar días con tristeza, alegría, etc).
 
-Seleccionar duración del video.
+Seleccionar duración máxima del video (aunque este será más corto si no se le aporta el suficiente material).
 
-Elegir música de fondo.
+Elegir música de fondo entre 3 canciones que el usuario podrá escuchar antes de seleccionar la que el quiera.
 
-Activar el orden aleatorio de clips.
+Activar el orden aleatorio de clips para darle un dinamismo extra en vez de que salgan todos los días en orden.
 
-Incluir solo imágenes, solo videos o ambos.
+Elegir si quiere incluir solo imágenes, solo videos o ambos.
 
-Todo esto con una interfaz amigable y dinámica. Durante la generación, frases motivacionales se muestran para acompañar el proceso.
 
-📸 Sugerencias de capturas:
 
-Vista del selector de opciones (duración, emociones, tipo de media).
-
-Calendario emergente para selección de días.
-
-Pantalla de carga con frases tipo “Exportando momentos mágicos ✨”.
-
-<p align="center"> <img src="assets/images/README_Images/VideoScreenOpciones.jpg" width="200"/> <img src="assets/images/README_Images/VideoScreenGenerando.jpg" width="200"/> </p> <p align="center"><em>Captura de pantalla de la generación de video emocional</em></p>
+Una vez se crea el vídeo con los parámetros que hemos seleccionado; se abre una widget donde podremos compartirlo o seleccionarlo para verlo en pantalla completa. Desde la pantalla completa también se podrá compartir dandole un toque a los tres puntos de arriba a la derecha.
 
 ### Fullscreen_image_page📱
 

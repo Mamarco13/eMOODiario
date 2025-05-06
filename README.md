@@ -68,29 +68,41 @@ Activar el orden aleatorio de clips para darle un dinamismo extra en vez de que 
 
 Elegir si quiere incluir solo imágenes, solo videos o ambos.
 
+<p align="center">
+  <img src="assets/readme_images/VS1.jpg" 
+       alt="Captura de pantalla de la video_screen" 
+       width="200" />
+  <img src="assets/readme_images/VS2.jpg" 
+       alt="Captura de pantalla de la video_screen" 
+       width="200" />
 
+<p align="center"><em>Menú completo de la video screen</em></p>
 
 Una vez se crea el vídeo con los parámetros que hemos seleccionado; se abre una widget donde podremos compartirlo o seleccionarlo para verlo en pantalla completa. Desde la pantalla completa también se podrá compartir dandole un toque a los tres puntos de arriba a la derecha.
 
+<p align="center">
+  <img src="assets/readme_images/VG.jpg" 
+       alt="Captura de pantalla de la video_screen" 
+       width="200" />
+  <img src="assets/readme_images/PC1.jpg" 
+       alt="Captura de pantalla de la video_screen" 
+       width="200" />
+   <img src="assets/readme_images/PC2.jpg" 
+       alt="Captura de pantalla de la video_screen" 
+       width="200" />
+
+<p align="center"><em>Una vez se genera el vídeo afrontamos distintas opciones</em></p>
+
 ### Fullscreen_image_page📱
 
-Cuando el usuario quiere ver a detalle sus recuerdos visuales de un día, esta pantalla muestra las imágenes o videos en pantalla completa, con una interfaz minimalista. También permite:
+Cuando el usuario quiere ver a detalle sus recuerdos visuales de un día, esta pantalla (a la que se accede con un toque en el preview del dia que se quiera ampliar) muestra las imágenes o videos en pantalla completa, con una interfaz minimalista. También permite:
 
-Reproducir videos directamente.
+  * Reproducir videos directamente.
 
-Descargar las imágenes al teléfono.
+  * Descargar las imágenes al teléfono.
 
-Ocultar la interfaz para mayor inmersión.
+  * Ocultar la interfaz para mayor inmersión.
 
-Ver título y frase emocional del día.
+  * Ver título y frase emocional del día.
 
-📸 Sugerencias de capturas:
-
-Imagen en pantalla completa con título/frase superpuestos.
-
-Vista previa de un video con botón de reproducir.
-
-Menú inferior con opciones de compartir/descargar.
-
-<p align="center"> <img src="assets/images/README_Images/FullscreenImage1.jpg" width="200"/> <img src="assets/images/README_Images/FullscreenVideo.jpg" width="200"/> </p> <p align="center"><em>Vista a detalle de recuerdos emocionales en pantalla completa</em></p>
 
